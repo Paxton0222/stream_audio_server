@@ -9,13 +9,18 @@ RTMP_TARGET = "rtmp://localhost:1935/live/test"
 YT_RTMP_TARGET = "rtmp://a.rtmp.youtube.com/live2/0h8b-0ubr-z852-wjm6-96x7"
 
 def video_info(url: str):
-    video = YouTube(url)
-    return {
-        "audio_url": video.streams.filter(only_audio=True).first().url + "&from_cache=True",
-        "title": video.title,
-        "author": video.author,
-        "thumb_url": video.thumbnail_url
-    }
+    video = YouTube(url,use_oauth=True, allow_oauth_cache=True)
+    try:
+        audio = video.streams.filter(only_audio=True).first().url + "&from_cache=True"
+        return {
+            "audio_url": audio,
+            "title": video.title,
+            "author": video.author,
+            "thumb_url": video.thumbnail_url
+        }
+    except Exception as e:
+        print(e)
+    return None
 
 def process_cmd(cmd: str, debug: bool):
     return subprocess.Popen(cmd, stdout=subprocess.PIPE if not debug else None, stderr=subprocess.PIPE if not debug else None,shell=True)
@@ -69,6 +74,10 @@ def live_stream_audio_with_image(image_url: str, audio_url: str, streaming_url: 
         process = process_cmd(cmd, debug) 
         process.wait()
 
+def send_to_server(name: str, num: int, url: str):
+    res = requests.get(f"http://localhost:8000/stream/{name}/{num}?url={url}")
+    print(res.status_code)
+
 if __name__ == "__main__":
     # Long time audio
     # url = "https://www.youtube.com/watch?v=qfFmZa9jgoY"
@@ -79,21 +88,42 @@ if __name__ == "__main__":
     urls = [
         # "https://www.youtube.com/watch?v=nizfv91mcpA"
         # "https://www.youtube.com/watch?v=UDVtMYqUAyw&pp=ygUV5pif6Zqb5pWI5oeJ5Li76aGM5puy",
-        # "https://www.youtube.com/watch?v=Qo7DfB-mj98&pp=ygUV5pif6Zqb5pWI5oeJ5Li76aGM5puy",
-        "https://www.youtube.com/watch?v=Pswx6OQp1Ks&list=RDMM&index=10",
-        "https://www.youtube.com/watch?v=mqIF115ph28&list=RDMM&index=8",
-        "https://www.youtube.com/watch?v=nTPL3N5QCh4&list=RDMM&start_radio=1&rv=Z_3BzA5ZSLY",
-        "https://www.youtube.com/watch?v=iLl-wxYC64A&list=RDMM&index=2",
+
+        # "https://www.youtube.com/watch?v=BwBr2B2AilM&list=RDGMEMHDXYb1_DDSgDsobPsOFxpA&index=41",
+        # "https://youtube.com/watch?v=mddFKeYaD3Q&list=RDGMEMHDXYb1_DDSgDsobPsOFxpA&index=13",
+        "https://www.youtube.com/watch?v=TFHd-B9Yu_0",
+        "https://www.youtube.com/watch?v=qrFdCuOi5n8",
+        "https://www.youtube.com/watch?v=uaFntToH2-I",
+        "https://www.youtube.com/watch?v=6saUWkJ3Gms",
+        "https://www.youtube.com/watch?v=6NImgmZKLfo",
         "https://www.youtube.com/watch?v=gbmLFbrv1js",
         "https://www.youtube.com/watch?v=5iqdEb74SK4&list=RDiviT0HIOm1M&index=2",
+        "https://www.youtube.com/watch?v=1edQR-pijJw&list=RDGMEMHDXYb1_DDSgDsobPsOFxpA&index=4",
+        "https://www.youtube.com/watch?v=4bmRziNgRGk&list=RDGMEMHDXYb1_DDSgDsobPsOFxpA&index=40",
+        "https://www.youtube.com/watch?v=Pswx6OQp1Ks&list=RDMM&index=10",
+        "https://www.youtube.com/watch?v=pex10KVmz2I&list=RDGMEMHDXYb1_DDSgDsobPsOFxpA&index=14",
+        "https://www.youtube.com/watch?v=mqIF115ph28&list=RDMM&index=8",
+        "https://www.youtube.com/watch?v=317RHaFF7Xk&list=RDGMEMHDXYb1_DDSgDsobPsOFxpA&index=27",
+        "https://www.youtube.com/watch?v=EVfrrugW8JI&list=RDGMEMHDXYb1_DDSgDsobPsOFxpA&index=27",
+        "https://www.youtube.com/watch?v=0JL8q27C_k8&list=RDGMEMHDXYb1_DDSgDsobPsOFxpA&index=15",
+        "https://www.youtube.com/watch?v=nTPL3N5QCh4&list=RDMM&start_radio=1&rv=Z_3BzA5ZSLY",
+        "https://www.youtube.com/watch?v=3EwLdxmJxyM&list=RDGMEMHDXYb1_DDSgDsobPsOFxpA&index=12",
+        "https://www.youtube.com/watch?v=iLl-wxYC64A&list=RDMM&index=2",
+        "https://www.youtube.com/watch?v=3F5PBLEOwp4&list=RDGMEMHDXYb1_DDSgDsobPsOFxpA&index=11",
+        "https://www.youtube.com/watch?v=nIBIMOzPWtA&list=RDGMEMHDXYb1_DDSgDsobPsOFxpA&start_radio=1&rv=6saUWkJ3Gms",
         "https://www.youtube.com/watch?v=-NxIQYQsaXc&list=RDiviT0HIOm1M&index=8",
+        "https://www.youtube.com/watch?v=WqPnSh3jJic",
         'https://www.youtube.com/watch?v=FDyz-4zHNh4&list=RDFDyz-4zHNh4&start_radio=1',
         "https://www.youtube.com/watch?v=dE9B-oMNNAs",
+        "https://www.youtube.com/watch?v=bLef1wGJrD4",
     ]
-    while True:
-        for url in urls:
-            info = video_info(url)
-            print(info["title"],"-",info["author"])
-            # live_stream_audio(info["audio_url"],RTMP_TARGET,False)
-            # live_stream_audio_with_image(info['thumb_url'],info["audio_url"],RTMP_TARGET,True)
-            live_stream_audio_with_image(info['thumb_url'],info["audio_url"],YT_RTMP_TARGET,True)
+    for url in urls:
+        send_to_server("paxton","1",url)
+    # while True:
+        # for url in urls:
+            # info = video_info(url)
+            # if info != None:
+                # print(info["title"],"-",info["author"])
+                # live_stream_audio(info["audio_url"],RTMP_TARGET,False)
+                # live_stream_audio_with_image(info['thumb_url'],info["audio_url"],RTMP_TARGET,True)
+                # live_stream_audio_with_image(info['thumb_url'],info["audio_url"],YT_RTMP_TARGET,True)

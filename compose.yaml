@@ -3,6 +3,8 @@ services:
   nginx-rtmp:
     platform: "linux/amd64"
     image: tiangolo/nginx-rtmp
+    networks:
+      - music_broadcast
     ports:
       - "1935:1935" # rtmp
       - "1999:1999" # hls
@@ -12,3 +14,31 @@ services:
       - ./hls:/mnt/hls
       - ./test_server:/mnt/test_server
     restart: always
+  rabbitmq:
+    image: "rabbitmq:management"
+    networks:
+      - music_broadcast
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_ERLANG_COOKIE: "oolong20020222"
+      RABBITMQ_DEFAULT_USER: "paxton"
+      RABBITMQ_DEFAULT_PASS: "oolong20020222"
+    restart: always
+  redis:
+    image: redis:latest 
+    ports:
+      - "6379:6379" 
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    networks:
+      - music_broadcast
+    restart: always
+
+networks:
+  music_broadcast:
+
+volumes:
+  redis_data:
