@@ -76,7 +76,7 @@ def live_stream_audio_with_image(image_url: str, audio_url: str, streaming_url: 
 
 def send_to_server(name: str, num: int, url: str):
     res = requests.get(f"http://localhost:8000/stream/{name}/{num}?url={url}")
-    print(res.status_code)
+    print(res.json())
 
 if __name__ == "__main__":
     # Long time audio
@@ -117,8 +117,11 @@ if __name__ == "__main__":
         "https://www.youtube.com/watch?v=dE9B-oMNNAs",
         "https://www.youtube.com/watch?v=bLef1wGJrD4",
     ]
-    for url in urls:
-        send_to_server("paxton","1",url)
+    i = 0
+    while i < 10000:
+        for url in urls:
+            send_to_server("paxton","1",url)
+            i += 1
     # while True:
         # for url in urls:
             # info = video_info(url)
