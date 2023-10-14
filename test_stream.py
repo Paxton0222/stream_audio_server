@@ -1,10 +1,12 @@
 from pytube import YouTube
+import requests
 import subprocess
 import tempfile
 import time
 import os
 
 RTMP_TARGET = "rtmp://localhost:1935/live/test"
+YT_RTMP_TARGET = "rtmp://a.rtmp.youtube.com/live2/0h8b-0ubr-z852-wjm6-96x7"
 
 def video_info(url: str):
     video = YouTube(url)
@@ -15,16 +17,56 @@ def video_info(url: str):
         "thumb_url": video.thumbnail_url
     }
 
-def live_stream_audio(audio_url: str, streaming_url: str):
+def process_cmd(cmd: str, debug: bool):
+    return subprocess.Popen(cmd, stdout=subprocess.PIPE if not debug else None, stderr=subprocess.PIPE if not debug else None,shell=True)
+
+def download_image(temp_dir, url):
+    # 使用 tempfile 模組創建臨時目錄
+    try:
+        # 發送 GET 請求以下載圖片
+        response = requests.get(url)
+        if response.status_code == 200:
+            # 從 URL 中提取文件名
+            filename = os.path.basename(url)
+            # 構建臨時文件的完整路徑
+            temp_image_path = os.path.join(temp_dir, filename)
+            # 寫入圖片內容到臨時文件
+            with open(temp_image_path, 'wb') as file:
+                file.write(response.content)
+            return temp_image_path
+        else:
+            print('無法下載圖片，狀態碼:', response.status_code)
+    except Exception as e:
+        print('下載圖片時出現錯誤:', str(e))
+    return None
+
+def download_audio(temp_dir: str, audio_url: str, debug: bool) -> str:
+    m3u8_file = os.path.join(temp_dir, "output.m3u8")
+    cmd = f"""ffmpeg -i "{audio_url}" -c:v copy -ac 2 -y -f segment -segment_time 2 -segment_list "{m3u8_file}" -segment_format mpegts '{os.path.join(temp_dir, "output%03d.ts")}'"""
+    process_cmd(cmd,debug)
+    return m3u8_file
+
+def waiting_for_file_ready(m3u8_file: str) -> None:
+    while not os.path.exists(m3u8_file):
+        # print('Waiting for:', m3u8_file , '...')
+        time.sleep(1)
+
+def live_stream_audio(audio_url: str, streaming_url: str,debug: bool):
     with tempfile.TemporaryDirectory() as temp_dir:
-        m3u8_file = os.path.join(temp_dir, "output.m3u8")
-        cmd = f"""ffmpeg -i "{audio_url}" -c:v copy -ac 2 -y -f segment -segment_time 2 -segment_list "{m3u8_file}" -segment_format mpegts '{os.path.join(temp_dir, "output%03d.ts")}'"""
-        subprocess.Popen(cmd, shell=True)
-        while not os.path.exists(m3u8_file):
-            print('Waiting for:', m3u8_file , '...')
-            time.sleep(1)
+        m3u8_file = download_audio(temp_dir,audio_url,debug)
+        waiting_for_file_ready(m3u8_file)
         cmd = f"""ffmpeg -i "{m3u8_file}" -c:v libx264 -c:a aac -f flv - | ffmpeg -re -i - -c:v copy -c:a copy -ac 2 -preset veryfast -b:v 3500k -maxrate 3500k -bufsize 7000k -f flv -flvflags no_duration_filesize {streaming_url}"""
-        process = subprocess.Popen(cmd,shell=True)
+        process = process_cmd(cmd, debug)
+        process.wait()
+
+def live_stream_audio_with_image(image_url: str, audio_url: str, streaming_url: str, debug: bool):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        m3u8_file = download_audio(temp_dir,audio_url,debug)
+        waiting_for_file_ready(m3u8_file)
+        temp_image = download_image(temp_dir, image_url)
+        temp_image = temp_image if temp_image != None else "image.jpeg"
+        cmd = f"""ffmpeg -loop 1 -i "{temp_image}" -i "{m3u8_file}" -tune stillimage -pix_fmt yuv420p -c:v libx264 -c:a aac -strict experimental -b:a 192k -vf "scale=1920:1080" -shortest -f flv - | ffmpeg -re -i - -c:v copy -c:a copy -ac 2 -preset veryfast -b:v 3500k -maxrate 3500k -bufsize 7000k -f flv -flvflags no_duration_filesize {streaming_url}"""
+        process = process_cmd(cmd, debug) 
         process.wait()
 
 if __name__ == "__main__":
@@ -32,8 +74,14 @@ if __name__ == "__main__":
     # url = "https://www.youtube.com/watch?v=qfFmZa9jgoY"
     # url = "https://www.youtube.com/watch?v=NJuSStkIZBg"
     # url = "https://www.youtube.com/watch?v=y2ECgOhoDGs"
+    # https://www.youtube.com/watch?v=nizfv91mcpA
     # Short time audio
     urls = [
+        # "https://www.youtube.com/watch?v=nizfv91mcpA"
+        # "https://www.youtube.com/watch?v=UDVtMYqUAyw&pp=ygUV5pif6Zqb5pWI5oeJ5Li76aGM5puy",
+        # "https://www.youtube.com/watch?v=Qo7DfB-mj98&pp=ygUV5pif6Zqb5pWI5oeJ5Li76aGM5puy",
+        "https://www.youtube.com/watch?v=Pswx6OQp1Ks&list=RDMM&index=10",
+        "https://www.youtube.com/watch?v=mqIF115ph28&list=RDMM&index=8",
         "https://www.youtube.com/watch?v=nTPL3N5QCh4&list=RDMM&start_radio=1&rv=Z_3BzA5ZSLY",
         "https://www.youtube.com/watch?v=iLl-wxYC64A&list=RDMM&index=2",
         "https://www.youtube.com/watch?v=gbmLFbrv1js",
@@ -42,6 +90,10 @@ if __name__ == "__main__":
         'https://www.youtube.com/watch?v=FDyz-4zHNh4&list=RDFDyz-4zHNh4&start_radio=1',
         "https://www.youtube.com/watch?v=dE9B-oMNNAs",
     ]
-    for url in urls:
-        info = video_info(url)
-        live_stream_audio(info["audio_url"],RTMP_TARGET)
+    while True:
+        for url in urls:
+            info = video_info(url)
+            print(info["title"],"-",info["author"])
+            # live_stream_audio(info["audio_url"],RTMP_TARGET,False)
+            # live_stream_audio_with_image(info['thumb_url'],info["audio_url"],RTMP_TARGET,True)
+            live_stream_audio_with_image(info['thumb_url'],info["audio_url"],YT_RTMP_TARGET,True)
