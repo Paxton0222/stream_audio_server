@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HLS Live Stream</title>
+    <link href="https://vjs.zencdn.net/7.15.4/video-js.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .vjs-default-skin.vjs-paused .vjs-big-play-button 
+        {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="h-screen w-screen flex justify-center items-center bg-[#2e2d2d]">
+        <div class="h-[30px] w-[250px] overflow-hidden">
+            <video id="my-video" class="video-js" controls preload="auto" width="250" height="30" muted autoplay>
+                <source src="http://localhost:1999/live/test.m3u8" type="application/x-mpegURL">
+            </video>
+        </div>
+    </div>
+    
+    <script src="https://vjs.zencdn.net/7.15.4/video.js"></script>
+    <script>
+        var player = videojs('my-video',{
+            inactivityTimeout: 0,
+            playbackRates: [0.5, 1, 1.5, 2], // 可选：定义播放速率选项
+            controlBar: {
+                playToggle: true, // 隐藏播放/暂停按钮
+                volumePanel: true, // 隐藏音量控制
+                currentTimeDisplay: true, // 隐藏当前时间显示
+                timeDivider: true, // 隐藏时间分隔符
+                durationDisplay: true, // 隐藏视频时长显示
+                remainingTimeDisplay: true, // 隐藏剩余时间显示
+                progressControl: true, // 显示进度控制
+                fullscreenToggle: true, // 隐藏全屏切换按钮
+                playbackRateMenuButton: true // 隐藏播放速率选项
+            }
+        });
+
+        player.ready(function() {
+            this.controls(true);
+        });
+
+        // 监听用户交互（点击或其他互动事件）
+        document.addEventListener("click", function() {
+            // 打开声音
+            player.muted(false);
+        });
+    </script>
+</body>
+</html>

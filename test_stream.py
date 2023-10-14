@@ -34,6 +34,9 @@ if __name__ == "__main__":
     # url = "https://www.youtube.com/watch?v=y2ECgOhoDGs"
     # Short time audio
     urls = [
+        "https://www.youtube.com/watch?v=nTPL3N5QCh4&list=RDMM&start_radio=1&rv=Z_3BzA5ZSLY",
+        "https://www.youtube.com/watch?v=iLl-wxYC64A&list=RDMM&index=2",
+        "https://www.youtube.com/watch?v=gbmLFbrv1js",
         "https://www.youtube.com/watch?v=5iqdEb74SK4&list=RDiviT0HIOm1M&index=2",
         "https://www.youtube.com/watch?v=-NxIQYQsaXc&list=RDiviT0HIOm1M&index=8",
         'https://www.youtube.com/watch?v=FDyz-4zHNh4&list=RDFDyz-4zHNh4&start_radio=1',
