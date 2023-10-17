@@ -27,6 +27,11 @@ def stream_pause(room: str, channel: int, redis_lock: RedisLock = Depends(get_re
     room_service = RoomService(room,channel,redis_lock,redis_queue,redis_map)
     return room_service.pause()
 
+@app.get("/stream/next/{room}/{channel}")
+def stream_next(room: str, channel: int, redis_lock: RedisLock = Depends(get_redis_lock), redis_queue: RedisQueue = Depends(get_redis_queue),redis_map: RedisMap = Depends(get_redis_map)):
+    room_service = RoomService(room,channel,redis_lock,redis_queue,redis_map)
+    return room_service.next()
+
 @app.get("/stream/list/{room}/{channel}")
 def stream_list(room: str, channel: int, page: int, limit: int, redis_lock: RedisLock = Depends(get_redis_lock), redis_queue: RedisQueue = Depends(get_redis_queue),redis_map: RedisMap = Depends(get_redis_map)):
     room_service = RoomService(room,channel,redis_lock,redis_queue,redis_map)

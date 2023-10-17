@@ -6,6 +6,7 @@ from app.tube import Youtube
 import signal
 import json
 import math
+import time
 
 class RoomService:
     def __init__(self ,room: str, channel: int, lock: RedisLock, queue: RedisQueue, map: RedisMap):
@@ -17,6 +18,7 @@ class RoomService:
         self.room_name = f"{room}-room-{channel}"
         self.lock_name = f"{room}-lock-{channel}"
         self.map_name = f"{room}-map-{channel}"
+        self.next_name = f"{room}-next-{channel}"
     def add(self, url: str) -> None:
         youtube = Youtube()
         info = youtube.audio_info(url)
@@ -81,14 +83,26 @@ class RoomService:
             task = celery.AsyncResult(task_id.decode('utf-8'))
             if task.state == "PENDING":
                 task.revoke(terminate=True)
-                # self.map.delete(self.map_name,"playing")
             else:
                 celery.control.revoke(task_id.decode('utf-8'),terminate=True,signal=signal.SIGTERM)
+                self.map.delete(self.map_name, "playing")
             return {
                 "status": True,
                 "state": task.state,
                 "task_id": task_id.decode("utf-8")
             }
+        return {
+            "status": False
+        }
+    def next(self):
+        last_time = self.map.get(self.next_name, "last_time")
+        if self.is_playing() and (last_time is None or int(time.time()) - int(last_time.decode("utf-8")) > 5):
+            pause_res = self.pause()
+            if pause_res["status"]:
+                self.map.delete(self.map_name,"playing")
+                self.queue.pop(self.room_name)
+                self.map.set(self.next_name, "last_time", int(time.time()))
+                return self.play()
         return {
             "status": False
         }
@@ -100,6 +114,7 @@ class RoomService:
         total_page = math.ceil(length // limit) + 1
         return {
             "total": total_page,
+            "length": length,
             "data": data
         }
     def length(self) -> int:
