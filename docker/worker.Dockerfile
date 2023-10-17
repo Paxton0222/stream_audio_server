@@ -14,4 +14,4 @@ COPY . .
 RUN pip install -r requirements.txt
 
 # 运行Celery Worker
-CMD celery -A app worker --loglevel=info --hostname=audio@%h --pool=solo
+CMD celery -A app worker --loglevel=info --hostname=audio@%h 

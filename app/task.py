@@ -1,11 +1,9 @@
 from app.celery import celery
-from celery.exceptions import SoftTimeLimitExceeded
 from app.exceptions import YoutubeAudioExpired
 from app.stream import Stream
 from app.redis import get_redis_lock,get_redis_queue, get_redis_map
 from app.tube import Youtube
 from app.env import env_vars
-import time
 import json
 
 @celery.task

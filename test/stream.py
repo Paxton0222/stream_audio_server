@@ -75,7 +75,7 @@ def live_stream_audio_with_image(image_url: str, audio_url: str, streaming_url: 
         process.wait()
 
 def send_to_server(name: str, num: int, url: str):
-    res = requests.get(f"http://localhost:8000/stream/{name}/{num}?url={url}")
+    res = requests.get(f"http://localhost:8000/stream/add/{name}/{num}?url={url}")
     print(res.json())
 
 if __name__ == "__main__":
@@ -118,15 +118,15 @@ if __name__ == "__main__":
         "https://www.youtube.com/watch?v=bLef1wGJrD4",
     ]
     i = 0
-    # while i < 10000:
-    #     for url in urls:
-    #         send_to_server("paxton","1",url)
-    #         i += 1
-    while True:
+    while i < 10000:
         for url in urls:
-            info = video_info(url)
-            if info != None:
-                print(info["title"],"-",info["author"])
-                live_stream_audio(info["audio_url"],RTMP_TARGET,True)
-                # live_stream_audio_with_image(info['thumb_url'],info["audio_url"],RTMP_TARGET,True)
-                # live_stream_audio_with_image(info['thumb_url'],info["audio_url"],YT_RTMP_TARGET,True)
+            send_to_server("paxton","1",url)
+            i += 1
+    # while True:
+    #     for url in urls:
+    #         info = video_info(url)
+    #         if info != None:
+    #             print(info["title"],"-",info["author"])
+    #             live_stream_audio(info["audio_url"],RTMP_TARGET,True)
+    #             # live_stream_audio_with_image(info['thumb_url'],info["audio_url"],RTMP_TARGET,True)
+    #             # live_stream_audio_with_image(info['thumb_url'],info["audio_url"],YT_RTMP_TARGET,True)

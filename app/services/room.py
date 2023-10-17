@@ -53,7 +53,7 @@ class RoomService:
         return False
     def set_playing_task_id(self, task_id: str) -> None:
         self.map.set(self.map_name, "playing", task_id)
-    def get_playing_task_id(self) -> str:
+    def get_playing_task_id(self):
         return self.map.get(self.map_name, "playing")
     def play(self) -> None:
         if self.queue.length(self.room_name) > 0:
