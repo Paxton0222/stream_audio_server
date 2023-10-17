@@ -24,7 +24,7 @@ def stream_play(room: str, channel: int, redis_lock: RedisLock = Depends(get_red
 
 @app.get("/stream/pause/{room}/{channel}")
 def stream_pause(room: str, channel: int, redis_lock: RedisLock = Depends(get_redis_lock), redis_queue: RedisQueue = Depends(get_redis_queue),redis_map: RedisMap = Depends(get_redis_map)):
-    room_service = RoomService(room,channel,redis_lock,redis_queue,redis_map) 
+    room_service = RoomService(room,channel,redis_lock,redis_queue,redis_map)
     return room_service.pause()
 
 @app.get("/stream/list/{room}/{channel}")

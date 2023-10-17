@@ -11,5 +11,7 @@ celery = Celery(
 celery.conf.update(
     result_expires=3600,
     task_serializer="json",
-    accept_content=["json"]
+    accept_content=["json"],
+    task_track_started=True,
+    task_ignore_result=False
 )

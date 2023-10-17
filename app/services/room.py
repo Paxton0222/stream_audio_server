@@ -3,13 +3,14 @@ from app.celery import celery
 from app.redis import RedisLock, RedisQueue, RedisMap
 from app.task import live_stream_youtube_audio
 from app.tube import Youtube
+import signal
 import json
 import math
 
 class RoomService:
     def __init__(self ,room: str, channel: int, lock: RedisLock, queue: RedisQueue, map: RedisMap):
         self.room = room
-        self.channel: channel
+        self.channel = channel
         self.lock = lock
         self.queue = queue
         self.map = map
@@ -47,6 +48,8 @@ class RoomService:
                     return True
                 elif task.state == "REVOKED":
                     return False
+                elif task.state == "STARTED":
+                    return True
         return False
     def set_playing_task_id(self, task_id: str) -> None:
         self.map.set(self.map_name, "playing", task_id)
@@ -63,7 +66,8 @@ class RoomService:
             # 取得被鎖上但是沒有在播放的鎖
             while not self.lock.acquire(self.lock_name, info["length"] + 10):
                 self.lock.release(self.lock_name)
-            live_stream_youtube_audio.apply_async((info, self.room_name,self.lock_name), retry=False,expire=info["length"] + 10)
+            task = live_stream_youtube_audio.apply_async((info, self.room,self.channel), retry=False,expire=info["length"] + 10)
+            self.set_playing_task_id(str(task.id))
             return {
                 "status": True
             }
@@ -74,10 +78,16 @@ class RoomService:
     def pause(self) -> None:
         if self.is_playing():
             task_id = self.get_playing_task_id()
-            task = celery.AsyncResult(task_id)
-            task.revoke(terminate=True,signal="SIGTERM")
+            task = celery.AsyncResult(task_id.decode('utf-8'))
+            if task.state == "PENDING":
+                task.revoke(terminate=True)
+                # self.map.delete(self.map_name,"playing")
+            else:
+                celery.control.revoke(task_id.decode('utf-8'),terminate=True,signal=signal.SIGTERM)
             return {
-                "status": True
+                "status": True,
+                "state": task.state,
+                "task_id": task_id.decode("utf-8")
             }
         return {
             "status": False
@@ -85,7 +95,7 @@ class RoomService:
     def list(self, page: int, limit: int) -> List[dict]:
         start_index = (page - 1) * limit
         end_index = start_index + limit - 1
-        data = self.queue.range(start_index, end_index)
+        data = self.queue.range(self.room_name,start_index, end_index)
         length = self.length()
         total_page = math.ceil(length // limit) + 1
         return {

@@ -2,15 +2,38 @@ import subprocess
 import requests
 import tempfile
 import time
+import signal
 import os
 
 from app.exceptions import YoutubeAudioExpired
 
 class Stream:
+    def __init__(self):
+        self.subprocesses = []
+    
     def process_cmd(self, cmd: str, debug: bool):
         """處理 Command 指令"""
-        return subprocess.Popen(cmd, stdout=subprocess.PIPE if not debug else None, stderr=subprocess.PIPE if not debug else None,shell=True)
-
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE if not debug else None,
+            stderr=subprocess.PIPE if not debug else None,
+            shell=True,
+            # preexec_fn=os.setpgrp
+        )
+        self.subprocesses.append(process)
+        return process
+    
+    def terminate_subprocesses(self):
+        """Terminate all subprocesses in the process group."""
+        for process in self.subprocesses:
+            print(process.id)
+            try:
+                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            except ProcessLookupError:
+                print("processLookupError")
+                pass
+            process.wait()
+    
     def download_image(self, temp_dir, url):
         """下載圖片到 temp 資料夾中"""
         # 使用 tempfile 模組創建臨時目錄
@@ -47,7 +70,7 @@ class Stream:
         """
         m3u8_file = os.path.join(temp_dir, "output.m3u8")
         cmd = f"""ffmpeg -i "{audio_url}" -c:v copy -ac 2 -y -f segment -segment_time 2 -segment_list "{m3u8_file}" -segment_format mpegts '{os.path.join(temp_dir, "output%03d.ts")}'"""
-        self.process_cmd(cmd,debug)
+        process = self.process_cmd(cmd,debug)
         return m3u8_file
 
     def live_stream_audio(self, audio_url: str, streaming_url: str,debug: bool):
@@ -67,5 +90,5 @@ class Stream:
             temp_image = self.download_image(temp_dir, image_url)
             temp_image = temp_image if temp_image != None else "image.jpeg"
             cmd = f"""ffmpeg -loop 1 -i "{temp_image}" -i "{m3u8_file}" -tune stillimage -pix_fmt yuv420p -c:v libx264 -c:a aac -strict experimental -b:a 192k -vf "scale=1920:1080" -shortest -f flv - | ffmpeg -re -i - -c:v copy -c:a copy -ac 2 -preset veryfast -b:v 3500k -maxrate 3500k -bufsize 7000k -f flv -flvflags no_duration_filesize {streaming_url}"""
-            process = self.process_cmd(cmd, debug) 
+            process = self.process_cmd(cmd, debug)
             process.wait()
