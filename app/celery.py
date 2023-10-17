@@ -1,9 +1,10 @@
 from celery import Celery
+from app.env import env_vars
 
 celery = Celery(
     'music_broadcast',
-    broker="pyamqp://paxton:oolong20020222@localhost:5672//",
-    backend="redis://localhost:6379/0",
+    broker=f"""pyamqp://{env_vars["RABBITMQ_USER"]}:{env_vars["RABBITMQ_PASS"]}@{env_vars["RABBITMQ_HOST"]}:{env_vars["RABBITMQ_PORT"]}//""",
+    backend=f"""redis://{env_vars["REDIS_HOST"]}:{env_vars["REDIS_PORT"]}/0""",
     include=["app.task"]
 )
 

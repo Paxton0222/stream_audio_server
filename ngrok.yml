@@ -1,0 +1,6 @@
+authtoken: 2WpRWMPzQT37kHwmotDUp4h4MBQ_2KmWtcnAhtGLdRwaKEJzp
+tunnels:
+  hls:
+    addr: nginx-rtmp:1999
+    proto: http
+version: 2

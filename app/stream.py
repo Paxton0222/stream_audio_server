@@ -4,6 +4,8 @@ import tempfile
 import time
 import os
 
+from app.exceptions import YoutubeAudioExpired
+
 class Stream:
     def process_cmd(self, cmd: str, debug: bool):
         """處理 Command 指令"""
@@ -30,11 +32,14 @@ class Stream:
             print('下載圖片時出現錯誤:', str(e))
         return None
     
-    def waiting_for_file_ready(self, m3u8_file: str) -> None:
+    def waiting_for_file_ready(self, m3u8_file: str, timeout: int) -> None:
         """等待 m3u8 檔案開始寫入"""
-        while not os.path.exists(m3u8_file):
+        end_time = time.time() + timeout
+        while not os.path.exists(m3u8_file) and time.time() < end_time:
             # print('Waiting for:', m3u8_file , '...')
-            time.sleep(1)
+            time.sleep(0.1)
+        if not os.path.exists(m3u8_file):
+            raise YoutubeAudioExpired()
 
     def download_audio(self, temp_dir: str, audio_url: str, debug: bool) -> str:
         """
@@ -49,7 +54,7 @@ class Stream:
         """推送緩存好的音訊檔案到 rtmp 伺服器"""
         with tempfile.TemporaryDirectory() as temp_dir:
             m3u8_file = self.download_audio(temp_dir,audio_url,debug)
-            self.waiting_for_file_ready(m3u8_file)
+            self.waiting_for_file_ready(m3u8_file,2)
             cmd = f"""ffmpeg -i "{m3u8_file}" -c:v libx264 -c:a aac -f flv - | ffmpeg -re -i - -c:v copy -c:a copy -ac 2 -preset veryfast -b:v 3500k -maxrate 3500k -bufsize 7000k -f flv -flvflags no_duration_filesize {streaming_url}"""
             process = self.process_cmd(cmd, debug)
             process.wait()
@@ -58,7 +63,7 @@ class Stream:
         """推送合成照片過後的影片檔到 rtmp 伺服器"""
         with tempfile.TemporaryDirectory() as temp_dir:
             m3u8_file = self.download_audio(temp_dir,audio_url,debug)
-            self.waiting_for_file_ready(m3u8_file)
+            self.waiting_for_file_ready(m3u8_file,2)
             temp_image = self.download_image(temp_dir, image_url)
             temp_image = temp_image if temp_image != None else "image.jpeg"
             cmd = f"""ffmpeg -loop 1 -i "{temp_image}" -i "{m3u8_file}" -tune stillimage -pix_fmt yuv420p -c:v libx264 -c:a aac -strict experimental -b:a 192k -vf "scale=1920:1080" -shortest -f flv - | ffmpeg -re -i - -c:v copy -c:a copy -ac 2 -preset veryfast -b:v 3500k -maxrate 3500k -bufsize 7000k -f flv -flvflags no_duration_filesize {streaming_url}"""

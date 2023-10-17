@@ -60,7 +60,7 @@ def live_stream_audio(audio_url: str, streaming_url: str,debug: bool):
     with tempfile.TemporaryDirectory() as temp_dir:
         m3u8_file = download_audio(temp_dir,audio_url,debug)
         waiting_for_file_ready(m3u8_file)
-        cmd = f"""ffmpeg -i "{m3u8_file}" -c:v libx264 -c:a aac -f flv - | ffmpeg -re -i - -c:v copy -c:a copy -ac 2 -preset veryfast -b:v 3500k -maxrate 3500k -bufsize 7000k -f flv -flvflags no_duration_filesize {streaming_url}"""
+        cmd = f"""ffmpeg -re -i "{m3u8_file}" -c:v libx264 -c:a aac -f flv - | ffmpeg -re -i - -c:v copy -c:a copy -ac 2 -preset veryfast -b:v 3500k -maxrate 3500k -bufsize 7000k -f flv -flvflags no_duration_filesize {streaming_url}"""
         process = process_cmd(cmd, debug)
         process.wait()
 
@@ -70,7 +70,7 @@ def live_stream_audio_with_image(image_url: str, audio_url: str, streaming_url: 
         waiting_for_file_ready(m3u8_file)
         temp_image = download_image(temp_dir, image_url)
         temp_image = temp_image if temp_image != None else "image.jpeg"
-        cmd = f"""ffmpeg -loop 1 -i "{temp_image}" -i "{m3u8_file}" -tune stillimage -pix_fmt yuv420p -c:v libx264 -c:a aac -strict experimental -b:a 192k -vf "scale=1920:1080" -shortest -f flv - | ffmpeg -re -i - -c:v copy -c:a copy -ac 2 -preset veryfast -b:v 3500k -maxrate 3500k -bufsize 7000k -f flv -flvflags no_duration_filesize {streaming_url}"""
+        cmd = f"""ffmpeg -loop 1 -re -i "{temp_image}" -i "{m3u8_file}" -tune stillimage -pix_fmt yuv420p -c:v libx264 -c:a aac -strict experimental -b:a 192k -vf "scale=1920:1080" -shortest -f flv - | ffmpeg -re -i - -c:v copy -c:a copy -ac 2 -preset veryfast -b:v 3500k -maxrate 3500k -bufsize 7000k -f flv -flvflags no_duration_filesize {streaming_url}"""
         process = process_cmd(cmd, debug) 
         process.wait()
 
@@ -118,15 +118,15 @@ if __name__ == "__main__":
         "https://www.youtube.com/watch?v=bLef1wGJrD4",
     ]
     i = 0
-    while i < 10000:
+    # while i < 10000:
+    #     for url in urls:
+    #         send_to_server("paxton","1",url)
+    #         i += 1
+    while True:
         for url in urls:
-            send_to_server("paxton","1",url)
-            i += 1
-    # while True:
-        # for url in urls:
-            # info = video_info(url)
-            # if info != None:
-                # print(info["title"],"-",info["author"])
-                # live_stream_audio(info["audio_url"],RTMP_TARGET,False)
+            info = video_info(url)
+            if info != None:
+                print(info["title"],"-",info["author"])
+                live_stream_audio(info["audio_url"],RTMP_TARGET,True)
                 # live_stream_audio_with_image(info['thumb_url'],info["audio_url"],RTMP_TARGET,True)
                 # live_stream_audio_with_image(info['thumb_url'],info["audio_url"],YT_RTMP_TARGET,True)
