@@ -23,8 +23,10 @@ def stream_pause(room: str, channel: int, redis_lock: RedisLock = Depends(get_re
 def stream_state(room: str, channel: int, redis_lock: RedisLock = Depends(get_redis_lock), redis_queue: RedisQueue = Depends(get_redis_queue),redis_map: RedisMap = Depends(get_redis_map)):
     room_service = RoomService(room,channel,redis_lock,redis_queue,redis_map)
     state = room_service.is_playing()
+    task = room_service.current_task()
     return {
         "status": state,
+        "state": task.state if task != None else None,
         "task_id": room_service.get_playing_task_id(),
         "data": room_service.playing_data() if state else {}
     }

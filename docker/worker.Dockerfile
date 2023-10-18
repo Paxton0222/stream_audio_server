@@ -13,5 +13,9 @@ COPY . .
 # 安装依赖
 RUN pip install -r requirements.txt
 
+COPY ./worker.sh /docker-entrypoinit.sh
+
+RUN chmod +x /docker-entrypoinit.sh
+
 # 运行Celery Worker
-CMD celery -A app worker --loglevel=info --hostname=audio@%h 
+ENTRYPOINT ["/docker-entrypoinit.sh"]

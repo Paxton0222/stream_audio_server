@@ -6,6 +6,8 @@ from app.tube import Youtube
 from app.env import env_vars
 import json
 import signal
+import logging
+import os
 
 @celery.task
 def live_stream_youtube_audio(info: dict, room: str, channel: int):
@@ -18,32 +20,47 @@ def live_stream_youtube_audio(info: dict, room: str, channel: int):
     stream = Stream()
     process = None  # 初始化 process 变量
 
+    def release_lock(signum = None, frame = None):
+        rmap.delete(map_name, "playing")
+        lock.release(lock_name)  # 释放锁
+        logging.info(f"{room_name} released lock successfully.")
+
     def terminate_process(signum, frame):
         nonlocal process
         if process:
+            logging.info(f"{room_name} terminating process...")
             try:
-                process.terminate()  # 发送 SIGTERM 信号以终止 process
-                process.wait()  # 等待 process 完成
+                os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+                logging.info(f"{room_name} terminated process successfully.")
             except ProcessLookupError:
                 # 处理已经终止的 process
-                pass
+                logging.error(f"{room_name} Failed to terminate process.")
 
     # 设置 SIGTERM 信号处理程序
     signal.signal(signal.SIGTERM, terminate_process)
+    signal.signal(signal.SIGTERM, release_lock)
 
     try:
-        process = stream.live_stream_audio(info["audio_url"], f"""{env_vars["RTMP_TARGET"]}/{room_name}""", True)
+        logging.info(f"Room {room_name} playing music: {info['title']}")
+        process = stream.live_stream_audio(info["audio_url"], f"""{env_vars["RTMP_TARGET"]}/{room_name}""", False)
         process.wait()
+        logging.info(f"Room {room_name} music ended: {info['title']}")
         # 下一首
         if celery.AsyncResult(live_stream_youtube_audio.request.id).state != "REVOKED":
             queue.pop(room_name)
+            logging.info(f"Room {room_name} music poped: {info['title']}")
             next_music = queue.first(room_name)
             if next_music:
                 next_music = json.loads(next_music)
                 lock.extend(lock_name, next_music["length"] + 10)
                 task = live_stream_youtube_audio.apply_async((next_music, room, channel), retry=False, expire=next_music["length"] + 10)
                 rmap.set(map_name, "playing", str(task.id))
+                return None
+            else:
+                release_lock()
+        logging.info("{room_name} end of script")
     except YoutubeAudioExpired:
+        logging.info(f"{room_name} {info['title']} audio url is expired restarting task...")
         youtube = Youtube()
         updated_info = youtube.audio_info(info["url"])
         if updated_info:
@@ -51,7 +68,4 @@ def live_stream_youtube_audio(info: dict, room: str, channel: int):
             task = live_stream_youtube_audio.apply_async((updated_info, room, channel), retry=False, expire=updated_info["length"] + 10)
             rmap.set(map_name, "playing", str(task.id))
     except Exception as e:
-        print("error", e)
-    finally:
-        rmap.delete(map_name, "playing")
-        lock.release(lock_name)  # 释放锁
+        logging.error(e)

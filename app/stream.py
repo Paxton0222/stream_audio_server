@@ -18,7 +18,7 @@ class Stream:
             stdout=subprocess.PIPE if not debug else None,
             stderr=subprocess.PIPE if not debug else None,
             shell=True,
-            # preexec_fn=os.setpgrp
+            preexec_fn=os.setpgrp
         )
         self.subprocesses.append(process)
         return process

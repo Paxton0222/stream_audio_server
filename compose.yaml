@@ -40,22 +40,22 @@ services:
     networks:
       - music_broadcast
     restart: always
-  ngrok:
-    image: ngrok/ngrok:3
-    networks:
-      - music_broadcast
-    restart: unless-stopped
-    volumes:
-      - ./ngrok.yml:/etc/ngrok.yml
-    command:
-          - "start"
-          - "--all"
-          - "--config"
-          - "/etc/ngrok.yml"
-    ports:
-      - 4040:4040
-    depends_on:
-      - nginx
+  # ngrok:
+  #   image: ngrok/ngrok:3
+  #   networks:
+  #     - music_broadcast
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./ngrok.yml:/etc/ngrok.yml
+  #   command:
+  #         - "start"
+  #         - "--all"
+  #         - "--config"
+  #         - "/etc/ngrok.yml"
+  #   ports:
+  #     - 4040:4040
+  #   depends_on:
+  #     - nginx
   flower:
     image: mher/flower
     restart: always
@@ -126,6 +126,8 @@ services:
       - redis
     volumes:
       - ./:/app
+    stop_signal: SIGTERM
+    # stop_grace_period: 1m
 
 networks:
   music_broadcast:
