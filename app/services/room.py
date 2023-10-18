@@ -75,13 +75,24 @@ class RoomService:
                 worker_name = task.info.get("hostname")
                 def cancel():
                     logging.info("clear zombie task")
-                    task.revoke(terminate=True)
+                    celery.control.revoke(task_id.decode('utf-8'),terminate=True)
                     self.cancel_zombie_task_lock()
                 if active_workers == None:
                     cancel()
                     return
                 if worker_name not in active_workers:
                     cancel()
+                else:
+                    tasks = active_workers[worker_name]
+                    for t in tasks: 
+                        # 暫時先這樣 O(n)
+                        logging.info(t['id'] , task_id.decode('utf-8'))
+                        logging.info(t['id'] == task_id.decode('utf-8'))
+                        if t['id'] == task_id.decode('utf-8'):
+                            break
+                    else:
+                        logging.error("task cancel")
+                        cancel()
 
     def cancel_zombie_task_lock(self):
         """因為 docker 刪除容器時無法自動解除鎖定狀態，故在操作前檢查"""
