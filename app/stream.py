@@ -78,7 +78,7 @@ class Stream:
         """推送緩存好的音訊檔案到 rtmp 伺服器"""
         cmd = f"""ffmpeg -i "{audio_url}" -c copy -f mpegts - | ffmpeg -re -i - -c:v copy -c:a copy -ac 2 -preset veryfast -f flv -flvflags no_duration_filesize {streaming_url}"""
         process = self.process_cmd(cmd, debug)
-        process.wait()
+        return process
 
     def live_stream_audio_with_image(self, image_url: str, audio_url: str, streaming_url: str, debug: bool):
         """推送合成照片過後的影片檔到 rtmp 伺服器"""
@@ -89,4 +89,4 @@ class Stream:
             temp_image = temp_image if temp_image != None else "image.jpeg"
             cmd = f"""ffmpeg -loop 1 -i "{temp_image}" -i "{m3u8_file}" -tune stillimage -pix_fmt yuv420p -c:v libx264 -c:a aac -strict experimental -b:a 192k -vf "scale=1920:1080" -shortest -f flv - | ffmpeg -re -i - -c:v copy -c:a copy -ac 2 -preset veryfast -b:v 3500k -maxrate 3500k -bufsize 7000k -f flv -flvflags no_duration_filesize {streaming_url}"""
             process = self.process_cmd(cmd, debug)
-            process.wait()
+            return process
