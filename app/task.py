@@ -35,10 +35,10 @@ def live_stream_youtube_audio(info: dict, room: str, channel: int):
             except ProcessLookupError:
                 # 处理已经终止的 process
                 logging.error(f"{room_name} Failed to terminate process.")
+        release_lock()
 
     # 设置 SIGTERM 信号处理程序
     signal.signal(signal.SIGTERM, terminate_process)
-    signal.signal(signal.SIGTERM, release_lock)
 
     try:
         logging.info(f"Room {room_name} playing music: {info['title']}")
