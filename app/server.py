@@ -1,16 +1,8 @@
 from fastapi import FastAPI, Depends
-from app.task import live_stream_youtube_audio
-from app.tube import Youtube
 from app.redis import RedisQueue, RedisLock, RedisMap, get_redis_queue, get_redis_lock, get_redis_map
-from app.celery import celery
 from app.services import RoomService
-import json
 
 app = FastAPI()
-
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
 
 @app.get("/stream/add/{room}/{channel}")
 def stream_add(room: str, channel: int,url: str, redis_queue: RedisQueue = Depends(get_redis_queue), redis_lock: RedisLock = Depends(get_redis_lock), redis_map: RedisMap = Depends(get_redis_map)):
@@ -26,6 +18,16 @@ def stream_play(room: str, channel: int, redis_lock: RedisLock = Depends(get_red
 def stream_pause(room: str, channel: int, redis_lock: RedisLock = Depends(get_redis_lock), redis_queue: RedisQueue = Depends(get_redis_queue),redis_map: RedisMap = Depends(get_redis_map)):
     room_service = RoomService(room,channel,redis_lock,redis_queue,redis_map)
     return room_service.pause()
+
+@app.get("/stream/state/{room}/{channel}")
+def stream_state(room: str, channel: int, redis_lock: RedisLock = Depends(get_redis_lock), redis_queue: RedisQueue = Depends(get_redis_queue),redis_map: RedisMap = Depends(get_redis_map)):
+    room_service = RoomService(room,channel,redis_lock,redis_queue,redis_map)
+    state = room_service.is_playing()
+    return {
+        "status": state,
+        "task_id": room_service.get_playing_task_id(),
+        "data": room_service.playing_data() if state else {}
+    }
 
 @app.get("/stream/next/{room}/{channel}")
 def stream_next(room: str, channel: int, redis_lock: RedisLock = Depends(get_redis_lock), redis_queue: RedisQueue = Depends(get_redis_queue),redis_map: RedisMap = Depends(get_redis_map)):

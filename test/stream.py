@@ -47,8 +47,8 @@ def download_image(temp_dir, url):
 
 def download_audio(temp_dir: str, audio_url: str, debug: bool) -> str:
     m3u8_file = os.path.join(temp_dir, "output.m3u8")
-    cmd = f"""ffmpeg -i "{audio_url}" -c:v copy -ac 2 -y -f segment -segment_time 2 -segment_list "{m3u8_file}" -segment_format mpegts '{os.path.join(temp_dir, "output%03d.ts")}'"""
-    process_cmd(cmd,debug)
+    cmd = f"""ffmpeg -loglevel debug -f lavfi -t 10 -i anullsrc=channel_layout=stereo:sample_rate=44100 -f mpegts -c:a aac -t 5 -y silence.ts -i "{audio_url}" -c:v copy -ac 2 -y -f segment -segment_time 5 -segment_list "{m3u8_file}" -segment_format mpegts '{os.path.join(temp_dir, "output%03d.ts")}'"""
+    process_cmd(cmd, debug)
     return m3u8_file
 
 def waiting_for_file_ready(m3u8_file: str) -> None:

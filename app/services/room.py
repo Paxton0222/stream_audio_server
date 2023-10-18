@@ -53,6 +53,11 @@ class RoomService:
                 elif task.state == "STARTED":
                     return True
         return False
+    def playing_data(self) -> dict:
+        data = self.queue.first(self.room_name)
+        if data:
+            return json.loads(data)
+        return {}
     def set_playing_task_id(self, task_id: str) -> None:
         self.map.set(self.map_name, "playing", task_id)
     def get_playing_task_id(self):
@@ -85,7 +90,7 @@ class RoomService:
                 task.revoke(terminate=True)
             else:
                 celery.control.revoke(task_id.decode('utf-8'),terminate=True,signal=signal.SIGTERM)
-                self.map.delete(self.map_name, "playing")
+            self.map.delete(self.map_name, "playing")
             return {
                 "status": True,
                 "state": task.state,

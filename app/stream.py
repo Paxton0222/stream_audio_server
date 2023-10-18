@@ -70,18 +70,16 @@ class Stream:
         """
         m3u8_file = os.path.join(temp_dir, "output.m3u8")
         cmd = f"""ffmpeg -i "{audio_url}" -c:v copy -ac 2 -y -f segment -segment_time 2 -segment_list "{m3u8_file}" -segment_format mpegts '{os.path.join(temp_dir, "output%03d.ts")}'"""
-        process = self.process_cmd(cmd,debug)
+        self.process_cmd(cmd,debug)
+        # process.wait()
         return m3u8_file
 
     def live_stream_audio(self, audio_url: str, streaming_url: str,debug: bool):
         """推送緩存好的音訊檔案到 rtmp 伺服器"""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            m3u8_file = self.download_audio(temp_dir,audio_url,debug)
-            self.waiting_for_file_ready(m3u8_file,2)
-            cmd = f"""ffmpeg -i "{m3u8_file}" -c:v libx264 -c:a aac -f flv - | ffmpeg -re -i - -c:v copy -c:a copy -ac 2 -preset veryfast -b:v 3500k -maxrate 3500k -bufsize 7000k -f flv -flvflags no_duration_filesize {streaming_url}"""
-            process = self.process_cmd(cmd, debug)
-            process.wait()
-    
+        cmd = f"""ffmpeg -i "{audio_url}" -c copy -f mpegts - | ffmpeg -re -i - -c:v copy -c:a copy -ac 2 -preset veryfast -f flv -flvflags no_duration_filesize {streaming_url}"""
+        process = self.process_cmd(cmd, debug)
+        process.wait()
+
     def live_stream_audio_with_image(self, image_url: str, audio_url: str, streaming_url: str, debug: bool):
         """推送合成照片過後的影片檔到 rtmp 伺服器"""
         with tempfile.TemporaryDirectory() as temp_dir:
