@@ -36,15 +36,8 @@ def live_stream_youtube_audio(info: dict, room: str, channel: int):
                 # 处理已经终止的 process
                 logging.error(f"{room_name} Failed to terminate process.")
         release_lock()
-
-    # 设置 SIGTERM 信号处理程序
-    signal.signal(signal.SIGTERM, terminate_process)
-
-    try:
-        logging.info(f"Room {room_name} playing music: {info['title']}")
-        process = stream.live_stream_audio(info["audio_url"], f"""{env_vars["RTMP_TARGET"]}/{room_name}""", False)
-        process.wait()
-        logging.info(f"Room {room_name} music ended: {info['title']}")
+    
+    def next_music():
         # 下一首
         if celery.AsyncResult(live_stream_youtube_audio.request.id).state != "REVOKED":
             queue.pop(room_name)
@@ -58,6 +51,16 @@ def live_stream_youtube_audio(info: dict, room: str, channel: int):
                 return None
             else:
                 release_lock()
+
+    # 设置 SIGTERM 信号处理程序
+    signal.signal(signal.SIGTERM, terminate_process)
+
+    try:
+        logging.info(f"Room {room_name} playing music: {info['title']}")
+        process = stream.live_stream_audio(info["audio_url"], f"""{env_vars["RTMP_TARGET"]}/{room_name}""", False)
+        process.wait()
+        logging.info(f"Room {room_name} music ended: {info['title']}")
+        next_music()
         logging.info("{room_name} end of script")
     except YoutubeAudioExpired:
         logging.info(f"{room_name} {info['title']} audio url is expired restarting task...")
@@ -67,5 +70,8 @@ def live_stream_youtube_audio(info: dict, room: str, channel: int):
             lock.extend(lock_name, updated_info["length"] + 10)
             task = live_stream_youtube_audio.apply_async((updated_info, room, channel), retry=False, expire=updated_info["length"] + 10)
             rmap.set(map_name, "playing", str(task.id))
+        else:
+            logging.error("Couldn't find music info.")
+            next_music()
     except Exception as e:
         logging.error(e)

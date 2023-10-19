@@ -1,6 +1,5 @@
 from typing import List
 from app.celery import celery
-from celery.result import AsyncResult
 from app.redis import RedisLock, RedisQueue, RedisMap
 from app.task import live_stream_youtube_audio
 from app.tube import Youtube

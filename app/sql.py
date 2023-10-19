@@ -14,9 +14,3 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # 创建 declarative base
 Base = declarative_base()
-
-try:
-    # 尝试创建数据库表格
-    Base.metadata.create_all(bind=engine)
-except OperationalError as e:
-    logging.error(f"Database table creation failed: {e}")
