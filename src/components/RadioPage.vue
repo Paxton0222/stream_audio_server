@@ -81,7 +81,7 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive, watch } from 'vue'
+import { ref, computed, reactive, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import HlsAudio from './HlsAudio.vue'
 import api from '../api'
@@ -219,5 +219,9 @@ const change_mute_state = () => {
 
 watch(toast_notifications.value, () => {
     setTimeout(() => toast_notifications.value.shift(), 3000)
+})
+
+onMounted(async () => {
+    await update()
 })
 </script>

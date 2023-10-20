@@ -1,6 +1,6 @@
 <template>
     <div class="flex justify-center hidden">
-        <audio ref="audio" controls autoplay></audio>
+        <audio ref="audio" controls autoplay muted></audio>
     </div>
 </template>
 
@@ -54,7 +54,9 @@ const loadAudioStream = () => {
             audio.value.muted = true;
             muted.value = audio.value.muted
         }
-        audio.value.play()
+        else{
+            audio.value.play()
+        }
         playing.value = true
         emit("play")
     })
@@ -71,6 +73,7 @@ onMounted(async () => {
         if (audio.value !== null && !clicked.value) {
             audio.value.muted = false
             muted.value = audio.value.muted
+            audio.value.play()
         }
         clicked.value = true;
     })
