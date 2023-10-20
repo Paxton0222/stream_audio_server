@@ -1,91 +1,79 @@
 <template>
     <div class="flex justify-center hidden">
-        <video ref="audio" class="video-js vjs-default-skin" controls autoplay muted></video>
+        <audio ref="audio" controls autoplay></audio>
     </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import videojs from 'video.js'
+import { onMounted, ref, watch } from 'vue'
+import Hls from 'hls.js';
 
 const audio = ref(null)
 const props = defineProps({
     src: {
         type: String,
         default: undefined
+    },
+    muted: {
+        type: Boolean,
+        default: true
     }
 })
 
-let player = null
-let retryInterval = null
-const retryDelay = 5000 // 重试间隔，单位毫秒
+const emit = defineEmits(["play", "pause", "muteState"])
 
-const initializePlayer = () => {
-    if (player) {
-        player.dispose() // 销毁现有的Video.js播放器
-    }
+const hls = new Hls({})
 
-    // 创建一个新的Video.js播放器
-    player = videojs(audio.value, {
-        controls: true,
-        autoplay: true,
-        muted: true,
-        sources: [
-            {
-                src: props.src,
-                type: 'application/x-mpegURL' // 指定媒体类型
+let interval = null
+let clicked = ref(false)
+let playing = ref(false)
+let muted = ref(props.muted)
+
+const loadAudioStream = () => {
+    hls.loadSource(props.src)
+    hls.attachMedia(audio.value)
+    hls.on(Hls.Events.ERROR, async (event, data) => {
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR && data.fatal) {
+            playing.value = false
+            if (interval === null) {
+                interval = setInterval(() => {
+                    console.error("retrying...")
+                    hls.loadSource(props.src)
+                    hls.attachMedia(audio.value)
+                    emit("pause")
+                }, 5000)
             }
-        ]
-    })
-
-    // 在 "ended" 事件发生时执行重新连接
-    player.on('ended', () => {
-        retry()
-    })
-
-    player.on('error', () => {
-        retry()
-    })
-
-    // 在 "playing" 事件发生时清除重试间隔
-    player.on('playing', () => {
-        player.play()
-        // player.muted(false)
-        clearInterval(retryInterval)
-    })
-}
-
-const retry = () => {
-    // 清除现有的重试间隔
-    clearInterval(retryInterval)
-
-    // 创建一个新的重试间隔
-    retryInterval = setInterval(() => {
-        initializePlayer()
-    }, retryDelay)
-}
-
-onMounted(() => {
-    initializePlayer() // 初始化播放器
-
-    document.addEventListener('click', () => {
-        // 当用户点击文档的任意地方时，取消静音
-        if (player) {
-            player.muted(false)
         }
+    });
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        console.log("audio stream attached.")
+        if (interval !== null) {
+            clearInterval(interval)
+        }
+        if (!clicked.value) {
+            audio.value.muted = true;
+            muted.value = audio.value.muted
+        }
+        audio.value.play()
+        playing.value = true
+        emit("play")
     })
+}
+watch(muted, (value) => {
+    emit("muteState", value)
 })
-
-onUnmounted(() => {
-    if (player) {
-        player.dispose() // 在组件卸载时销毁播放器
-    }
-    clearInterval(retryInterval)
+watch(props, (value) => {
+    audio.value.muted = value.muted 
+    muted.value = audio.value.muted
 })
-
-retry() // 初始化时执行第一次重连
+onMounted(async () => {
+    document.addEventListener('click', () => {
+        if (audio.value !== null && !clicked.value) {
+            audio.value.muted = false
+            muted.value = audio.value.muted
+        }
+        clicked.value = true;
+    })
+    loadAudioStream()
+})
 </script>
-
-<style>
-/* 您的CSS样式可以放在这里 */
-</style>

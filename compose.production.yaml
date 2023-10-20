@@ -31,6 +31,8 @@ services:
       RABBITMQ_DEFAULT_USER: "paxton"
       RABBITMQ_DEFAULT_PASS: "oolong20020222"
     restart: always
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
   redis:
     image: redis:latest 
     volumes:
@@ -121,11 +123,12 @@ services:
       - db
       - rabbitmq
       - redis
-    stop_signal: SIGTERM
+    stop_signal: SIGKILL
 
 networks:
   music_broadcast:
 
 volumes:
   redis_data:
+  rabbitmq_data:
   mysql_data:

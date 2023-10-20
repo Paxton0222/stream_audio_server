@@ -60,7 +60,7 @@ class RoomService:
         self.clear_offline_worker_task()
         task_id = self.get_playing_task_id()
         if task_id != None:
-            task = celery.AsyncResult(task_id)
+            task = celery.AsyncResult(task_id.decode("utf-8"))
             if task != None:
                 return task
         return None
@@ -70,8 +70,11 @@ class RoomService:
         active_workers = control.inspect().active()
         task_id = self.get_playing_task_id()
         if task_id != None:
-            task = celery.AsyncResult(task_id)
-            if task.state == "STARTED":
+            task = celery.AsyncResult(task_id.decode("utf-8"))
+            state = set()
+            state.add("STARTED")
+            state.add("PENDING")
+            if task.state in state:
                 worker_name = task.info.get("hostname")
 
                 def cancel():
@@ -79,23 +82,26 @@ class RoomService:
                     celery.control.revoke(
                         task_id.decode('utf-8'), terminate=True)
                     self.cancel_zombie_task_lock()
+                    self.play()
+                # logging.error(active_workers)
                 if active_workers == None:
+                    logging.error("task cancel 1")
                     cancel()
                     return
                 if worker_name not in active_workers:
+                    logging.error("task cancel 2")
                     cancel()
                 else:
-                    pass
-                    # tasks = active_workers[worker_name]
-                    # for t in tasks:
-                    #     # 暫時先這樣 O(n)
-                    #     logging.info(t['id'], task_id.decode('utf-8'))
-                    #     logging.info(t['id'] == task_id.decode('utf-8'))
-                    #     if t['id'] == task_id.decode('utf-8'):
-                    #         break
-                    # else:
-                    #     logging.error("task cancel")
-                    #     cancel()
+                    tasks = active_workers[worker_name]
+                    for t in tasks:
+                        # 暫時先這樣 O(n)
+                        logging.info(t['id'], task_id.decode('utf-8'))
+                        logging.info(t['id'] == task_id.decode('utf-8'))
+                        if t['id'] == task_id.decode('utf-8'):
+                            break
+                    else:
+                        logging.error("task cancel 3")
+                        cancel()
 
     def cancel_zombie_task_lock(self):
         """因為 docker 刪除容器時無法自動解除鎖定狀態，故在操作前檢查"""
