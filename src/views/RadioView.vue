@@ -1,11 +1,11 @@
 <script setup>
 // import TheWelcome from '../components/TheWelcome.vue'
-import Radio from '../components/Radio.vue'
+import RadioPage from '../components/RadioPage.vue'
 </script>
 
 <template>
-  <main>
-    <!-- <TheWelcome /> -->
-    <Radio/>
-  </main>
+    <main>
+        <!-- <TheWelcome /> -->
+        <RadioPage />
+    </main>
 </template>

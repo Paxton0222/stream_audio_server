@@ -1,6 +1,8 @@
 # 使用基础镜像
 FROM python:3.10.9
 
+ARG env_mode
+
 RUN apt-get update && \
     apt-get install -y ffmpeg
 
@@ -9,6 +11,7 @@ WORKDIR /app
 
 # 复制项目文件到容器
 COPY . .
+COPY .env.${env_mode} .env
 
 # 安装依赖
 RUN pip install -r requirements.txt
