@@ -9,7 +9,7 @@
 **/.venv
 **/.classpath
 **/.dockerignore
-**/.env
+**/.env.example
 **/.git
 **/.gitignore
 **/.project
@@ -32,3 +32,8 @@
 **/values.dev.yaml
 LICENSE
 README.md
+**/venv
+.gitignore
+**/test-server
+**/hls
+**/docker
