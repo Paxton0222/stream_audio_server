@@ -35,6 +35,7 @@ const loadAudioStream = () => {
     hls.on(Hls.Events.ERROR, async (event, data) => {
         if (data.type === Hls.ErrorTypes.NETWORK_ERROR && data.fatal) {
             playing.value = false
+            console.log(interval)
             if (interval === null) {
                 interval = setInterval(() => {
                     console.error("retrying...")
@@ -49,6 +50,7 @@ const loadAudioStream = () => {
         console.log("audio stream attached.")
         if (interval !== null) {
             clearInterval(interval)
+            interval = null
         }
         if (!clicked.value) {
             audio.value.muted = true;

@@ -74,16 +74,19 @@ class RoomService:
             state = set()
             state.add("STARTED")
             state.add("PENDING")
-            if task.state in state:
-                worker_name = task.info.get("hostname")
 
-                def cancel():
-                    logging.info("clear zombie task")
-                    celery.control.revoke(
-                        task_id.decode('utf-8'), terminate=True)
-                    self.cancel_zombie_task_lock()
-                    self.play()
-                # logging.error(active_workers)
+            def cancel():
+                logging.info("clear zombie task")
+                celery.control.revoke(
+                    task_id.decode('utf-8'), terminate=True)
+                self.cancel_zombie_task_lock()
+                self.play()
+            if task.state == "PENDING":
+                logging.info("task cancel 0")
+                cancel()
+                return
+            elif task.state == "STARTED":
+                worker_name = task.info.get("hostname")
                 if active_workers == None:
                     logging.error("task cancel 1")
                     cancel()
