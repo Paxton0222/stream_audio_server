@@ -1,7 +1,7 @@
 version: '3'
 services:
   nginx:
-    image: registery.paxton0222.com/nginx
+    image: registry.paxton0222.com/music_server/nginx
     build:
       context: .
       dockerfile: ./docker/nginx.Dockerfile
@@ -22,6 +22,10 @@ services:
       replicas: 1
       restart_policy:
         condition: on-failure
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
   rabbitmq:
     image: "rabbitmq:management"
     networks:
@@ -33,6 +37,10 @@ services:
     restart: always
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
   redis:
     image: redis:latest 
     volumes:
@@ -41,6 +49,10 @@ services:
     networks:
       - music_broadcast
     restart: always
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
   flower:
     image: mher/flower
     restart: always
@@ -53,8 +65,12 @@ services:
     depends_on:
       - rabbitmq
       - redis
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
   server:
-    image: registry.paxton0222.com/music-server
+    image: registry.paxton0222.com/music_server/server
     restart: always
     build:
       context: .
@@ -71,8 +87,12 @@ services:
       replicas: 3
       restart_policy:
         condition: on-failure
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
   fronted:
-    image: registry.paxton0222.com/music-fronted
+    image: registry.paxton0222.com/music_server/fronted
     build:
       context: .
       dockerfile: ./docker/fronted.Dockerfile
@@ -90,6 +110,10 @@ services:
       replicas: 3
       restart_policy:
         condition: on-failure
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
   db:
     image: mysql:latest
     restart: always
@@ -98,6 +122,10 @@ services:
       - mysql_data:/var/lib/mysql
     networks:
       - music_broadcast
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     platform: "linux/amd64"
@@ -106,8 +134,12 @@ services:
       - music_broadcast
     depends_on:
       - db
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
   celery-worker:
-    image: registry.paxton0222.com/music-worker
+    image: registry.paxton0222.com/music_server/worker
     build:
       context: .
       dockerfile: ./docker/worker.Dockerfile
@@ -124,6 +156,10 @@ services:
       - rabbitmq
       - redis
     stop_signal: SIGKILL
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   music_broadcast:

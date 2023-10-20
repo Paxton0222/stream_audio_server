@@ -62,7 +62,7 @@ def live_stream_youtube_audio(info: dict, room: str, channel: int):
     try:
         logging.info(f"Room {room_name} playing music: {info['title']}")
         process = stream.live_stream_audio(
-            info["audio_url"], f"""{env_vars["RTMP_TARGET"]}/{room_name}""", False)
+            info["audio_url"], f"""{env_vars["RTMP_TARGET"]}/{room_name}""", True)
         process.wait()
         logging.info(f"Room {room_name} music ended: {info['title']}")
     except YoutubeAudioExpired:
