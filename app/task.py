@@ -65,8 +65,6 @@ def live_stream_youtube_audio(info: dict, room: str, channel: int):
             info["audio_url"], f"""{env_vars["RTMP_TARGET"]}/{room_name}""", False)
         process.wait()
         logging.info(f"Room {room_name} music ended: {info['title']}")
-        next_music()
-        logging.info(f"{room_name} end of script")
     except YoutubeAudioExpired:
         logging.info(
             f"{room_name} {info['title']} audio url is expired restarting task...")
@@ -77,8 +75,8 @@ def live_stream_youtube_audio(info: dict, room: str, channel: int):
             task = live_stream_youtube_audio.apply_async(
                 (updated_info, room, channel), retry=False, expire=updated_info["length"] + 10)
             rmap.set(map_name, "playing", str(task.id))
-        else:
-            logging.error("Couldn't find music info.")
-            next_music()
     except Exception as e:
         logging.error(e)
+    finally:
+        next_music()
+        logging.info(f"{room_name} end of script")
