@@ -221,3 +221,4 @@ coverage
 *.njsproj
 *.sln
 *.sw?
+ssl/
