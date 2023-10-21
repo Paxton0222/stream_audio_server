@@ -13,5 +13,6 @@ RUN apk update \
     && pip install --no-cache-dir -r requirements.txt
 RUN rm /var/cache/apk/*
 RUN apk add ffmpeg
+RUN python3 -m pip install --force-reinstall https://github.com/yt-dlp/yt-dlp/archive/master.tar.gz
 
 ENTRYPOINT ["celery","-A", "app", "worker", "--loglevel=info", "--hostname=audio@%h"]

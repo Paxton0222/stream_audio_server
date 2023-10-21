@@ -12,6 +12,7 @@ RUN apk update \
     && apk add --no-cache --virtual build-deps gcc python3-dev musl-dev libc-dev libffi-dev mariadb-dev \
     && pip install --no-cache-dir -r requirements.txt
 RUN rm /var/cache/apk/*
+RUN python3 -m pip install --force-reinstall https://github.com/yt-dlp/yt-dlp/archive/master.tar.gz
 
 EXPOSE 8000
 

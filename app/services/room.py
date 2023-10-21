@@ -26,11 +26,11 @@ class RoomService:
         youtube = Youtube()
         info = youtube.audio_info(url)
         if info != None:
-            if info["length"] > 3600 * 6:
-                return {
-                    "status": False,
-                    "message": "影片超過6小時上限"
-                }
+        #     if info["length"] > 3600 * 6:
+        #         return {
+        #             "status": False,
+        #             "message": "影片超過6小時上限"
+        #         }
             self.queue.add(self.room_name, info)
             return {
                 "status": True
