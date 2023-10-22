@@ -132,10 +132,10 @@ class RoomService:
                 }
             info = json.loads(self.queue.first(self.room_name))
             # 取得被鎖上但是沒有在播放的鎖
-            while not self.lock.acquire(self.lock_name, info["length"]):
+            while not self.lock.acquire(self.lock_name, info["length"] + 5):
                 self.lock.release(self.lock_name)
             task = live_stream_youtube_audio.apply_async(
-                (info, self.room, self.channel), retry=False, expire=info["length"])
+                (info, self.room, self.channel), retry=False, expire=info["length"] + 5)
             logging.info(task.id)
             self.set_playing_task_id(str(task.id))
             return {
