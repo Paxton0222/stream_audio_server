@@ -25,6 +25,6 @@ async def websocket_endpoint(websocket: WebSocket, room: str, channel: int):
         while True:
             data = await websocket.receive_text()
             print(data)
-            await socket_manager.broadcast_to_room(room_id, json.dumps(data))
+            await socket_manager.broadcast_to_room(room_id, data)
     except WebSocketDisconnect:  # client disconnect
         await socket_manager.remove_user_from_room(room_id, websocket)
