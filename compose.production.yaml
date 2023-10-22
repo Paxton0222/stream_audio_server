@@ -198,7 +198,7 @@ services:
       - db
       - rabbitmq
       - redis
-    stop_signal: SIGTREM
+    stop_signal: SIGTERM
     # stop_grace_period: 1m
     logging:
       options:
