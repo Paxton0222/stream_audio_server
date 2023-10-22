@@ -3,9 +3,11 @@ from app.celery import celery
 from app.redis import RedisLock, RedisQueue, RedisMap
 from app.task import live_stream_youtube_audio
 from app.tube import Youtube
+import logging
 import signal
 import json
 import math
+import time
 
 
 class RoomService:
@@ -90,7 +92,7 @@ class RoomService:
             else:
                 celery.control.revoke(task_id.decode(
                     'utf-8'), terminate=True, signal=signal.SIGTERM)
-            self.release_lock()
+            # self.release_lock()
             return {
                 "status": True,
                 "state": task.state,
@@ -102,15 +104,27 @@ class RoomService:
         }
 
     def next(self):
-        if self.is_playing():
-            self.pause()
-        self.queue.pop(self.room_name)
-        if self.queue.length(self.room_name) > 0:
-            return self.play()
+        last_time = self.map.get(self.next_name, "last_time")
+        if (last_time is None or int(time.time()) - int(last_time.decode("utf-8")) > 5):
+            self.map.set(self.next_name, "last_time", int(time.time()))
+            if self.is_playing():
+                self.pause()
+                while self.is_playing():
+                    time.sleep(0.1)
+                self.queue.pop(self.room_name)
+                return self.play()
+            else:
+                if self.queue.length(self.room_name) > 0:
+                    self.queue.pop(self.room_name)
+                    return self.play()
+                return {
+                    "status": False,
+                    "message": "沒有下一首音樂了"
+                }
         else:
             return {
-                "status": False,
-                "message": "沒有下一首音樂了"
+                "stauts": False,
+                "message": "操作過快"
             }
 
     def list(self, page: int, limit: int) -> List[dict]:

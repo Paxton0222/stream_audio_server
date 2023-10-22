@@ -1,7 +1,7 @@
 from app.celery import celery
 from app.stream import Stream
 from app.redis import get_redis_lock, get_redis_map
-from celery.signals import worker_shutting_down
+from celery.signals import worker_shutting_down, task_success
 from app.env import env_vars
 from app.redis import redis_conn
 import json
@@ -62,42 +62,60 @@ def live_stream_youtube_audio(info: dict, room: str, channel: int):
                 logging.info(f"{room_name} terminated process successfully.")
             except ProcessLookupError:
                 logging.error(f"{room_name} Failed to terminate process.")
+        active_radios = json.loads(redis_conn.hget(
+            active_radios_key, worker_hostname) or '{}')
+        if room_name in active_radios:
+            del active_radios[room_name]
+        redis_conn.hset(active_radios_key, worker_hostname,
+                        json.dumps(active_radios))
 
     signal.signal(signal.SIGTERM, terminate_process)
 
-    try:
-        logging.info(f"Room {room_name} playing music: {info['title']}")
+    logging.info(f"Room {room_name} playing music: {info['title']}")
 
-        active_radios = json.loads(redis_conn.hget(
-            active_radios_key, worker_hostname) or '{}')
-        active_radios[room_name] = {
-            "room": room,
-            "channel": channel
-        }
-        logging.info(active_radios)
-        redis_conn.hset(active_radios_key, worker_hostname,
-                        json.dumps(active_radios))
+    active_radios = json.loads(redis_conn.hget(
+        active_radios_key, worker_hostname) or '{}')
+    active_radios[room_name] = {
+        "room": room,
+        "channel": channel
+    }
+    logging.info(active_radios)
+    redis_conn.hset(active_radios_key, worker_hostname,
+                    json.dumps(active_radios))
 
-        process = stream.live_stream_audio(
-            info["url"], f"""{env_vars["RTMP_TARGET"]}/{room_name}""", False)
-        process.wait()
-        logging.info(f"Room {room_name} music ended: {info['title']}")
-    except Exception as e:
-        logging.error(e)
-    finally:
-        release_lock()
-        active_radios = json.loads(redis_conn.hget(
-            active_radios_key, worker_hostname) or '{}')
+    process = stream.live_stream_audio(
+        info["url"], f"""{env_vars["RTMP_TARGET"]}/{room_name}""", False)
+    process.wait()
+    logging.info(f"Room {room_name} music ended: {info['title']}")
+
+    release_lock()
+    asyncio.get_event_loop().run_until_complete(
+        connect_to_websocket_server("pause"))
+    active_radios = json.loads(redis_conn.hget(
+        active_radios_key, worker_hostname) or '{}')
+    if room_name in active_radios:
         del active_radios[room_name]
         redis_conn.hset(active_radios_key, worker_hostname,
                         json.dumps(active_radios))
-        logging.info(active_radios)
-        asyncio.get_event_loop().run_until_complete(
-            connect_to_websocket_server("pause"))
-        if not terminate:
-            live_stream_next_youtube_audio.apply_async(
-                args=(room, channel), retry=False, expire=5)
-        logging.info(f"{room_name} end of script")
+    else:
+        raise Exception("revoke")
+    logging.info(f"{room_name} end of script")
+
+    return {
+        "room": room,
+        "channel": channel
+    }
+
+
+@task_success.connect(sender=live_stream_youtube_audio)
+def live_stream_youtube_audio_success(sender, result, **kargs):
+    print(celery.AsyncResult(sender.request.id).state)
+    room = result["room"]
+    channel = result["channel"]
+    logging.info('next music')
+    logging.info(result)
+    live_stream_next_youtube_audio.apply_async(
+        args=(room, channel), retry=False, expire=5)
 
 
 @celery.task
