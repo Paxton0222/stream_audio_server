@@ -1,5 +1,5 @@
 # Use the official Node.js image as the base image
-FROM node:18
+FROM node:18.18.2-alpine3.18
 
 ARG env_mode
 ENV ENV_MODE=$env_mode

@@ -1,21 +1,18 @@
-# 使用基础镜像
-FROM python:3.10.9
+FROM python:3.10.9-alpine3.17
 
 ARG env_mode
 
-RUN apt-get update && \
-    apt-get install -y ffmpeg
-
-# 设置工作目录
 WORKDIR /app
 
-# 复制项目文件到容器
 COPY . .
 COPY .env.${env_mode} .env
 
-# 安装依赖
-RUN pip install -r requirements.txt
+RUN apk update \
+    && apk add pkgconfig \
+    && apk add --no-cache --virtual build-deps gcc python3-dev musl-dev libc-dev libffi-dev mariadb-dev \
+    && pip install --no-cache-dir -r requirements.txt
+RUN rm /var/cache/apk/*
+RUN apk add ffmpeg
+RUN python3 -m pip install --force-reinstall https://github.com/yt-dlp/yt-dlp/archive/master.tar.gz
 
-
-# 运行Celery Worker
 ENTRYPOINT ["celery","-A", "app", "worker", "--loglevel=info", "--hostname=audio@%h"]

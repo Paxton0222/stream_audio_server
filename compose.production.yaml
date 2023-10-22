@@ -1,27 +1,36 @@
 version: '3'
 services:
   nginx:
-    image: registery.paxton0222.com/nginx
+    image: registry.paxton0222.com/music_server/nginx
     build:
       context: .
       dockerfile: ./docker/nginx.Dockerfile
     networks:
       - music_broadcast
     ports:
-      - 443:443
+      - "80:80"
+      - "443:443"
+      - "1999:1999" # hls
       - "3000:3000" # server
     volumes:
       - ./conf/nginx.conf:/etc/nginx/nginx.conf
+      - ./conf:/etc/nginx/conf
       - ./hls:/mnt/hls
+      - ./ssl/:/etc/nginx/ssl
     restart: always
     depends_on:
       - fronted
       - flower
       - server
+      - acme_all_pax_tw
     deploy:
       replicas: 1
       restart_policy:
         condition: on-failure
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
   rabbitmq:
     image: "rabbitmq:management"
     networks:
@@ -31,14 +40,63 @@ services:
       RABBITMQ_DEFAULT_USER: "paxton"
       RABBITMQ_DEFAULT_PASS: "oolong20020222"
     restart: always
-  redis:
-    image: redis:latest 
     volumes:
-      - redis_data:/data
-    command: ["redis-server", "--appendonly", "yes"]
+      - rabbitmq_data:/var/lib/rabbitmq
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+  # redis:
+  #   image: redis:latest 
+  #   ports:
+  #     - "6379:6379" 
+  #   volumes:
+  #     - redis_data:/data
+  #   command: ["redis-server", "--appendonly", "yes"]
+  #   networks:
+  #     - music_broadcast
+  #   restart: always
+  fix-redis-volume-ownership: # This service is to authorise redis-master with ownership permissions
+    image: 'bitnami/redis:latest'
+    user: root
+    command: chown -R 1001:1001 /bitnami
+    volumes:
+      - redis_data:/bitnami
+      # - ./data/redis/conf/redis.conf:/opt/bitnami/redis/conf/redis.conf
     networks:
       - music_broadcast
     restart: always
+  redis: # Setting up master node
+    image: 'bitnami/redis:latest'
+    ports:
+      - '6379:6379' # Port 6329 will be exposed to handle connections from outside server 
+    environment:
+      - REDIS_REPLICATION_MODE=master # Assigning the node as a master
+      - ALLOW_EMPTY_PASSWORD=yes # No password authentication required/ provide password if needed
+    volumes:
+      - redis_data:/bitnami # Redis master data volume
+      # - ./data/redis/conf/redis.conf:/opt/bitnami/redis/conf/redis.conf # Redis master configuration volume
+    networks:
+      - music_broadcast
+    restart: always
+  redis-replica: # Setting up slave node
+    image: 'bitnami/redis:latest'
+    # ports:
+    #   - '6379' # No port is exposed 
+    depends_on:
+      - redis # will only start after the master has booted completely
+    environment:
+      - REDIS_REPLICATION_MODE=slave # Assigning the node as slave
+      - REDIS_MASTER_HOST=redis # Host for the slave node is the redis-master node
+      - REDIS_MASTER_PORT_NUMBER=6379 # Port number for local 
+      - ALLOW_EMPTY_PASSWORD=yes # No password required to connect to node
+    networks:
+      - music_broadcast
+    restart: always
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
   flower:
     image: mher/flower
     restart: always
@@ -51,8 +109,12 @@ services:
     depends_on:
       - rabbitmq
       - redis
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
   server:
-    image: registry.paxton0222.com/music-server
+    image: registry.paxton0222.com/music_server/server
     restart: always
     build:
       context: .
@@ -69,8 +131,12 @@ services:
       replicas: 3
       restart_policy:
         condition: on-failure
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
   fronted:
-    image: registry.paxton0222.com/music-fronted
+    image: registry.paxton0222.com/music_server/fronted
     build:
       context: .
       dockerfile: ./docker/fronted.Dockerfile
@@ -88,6 +154,10 @@ services:
       replicas: 3
       restart_policy:
         condition: on-failure
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
   db:
     image: mysql:latest
     restart: always
@@ -96,16 +166,23 @@ services:
       - mysql_data:/var/lib/mysql
     networks:
       - music_broadcast
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
-    platform: "linux/amd64"
     env_file: .env.production
     networks:
       - music_broadcast
     depends_on:
       - db
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
   celery-worker:
-    image: registry.paxton0222.com/music-worker
+    image: registry.paxton0222.com/music_server/worker
     build:
       context: .
       dockerfile: ./docker/worker.Dockerfile
@@ -121,11 +198,36 @@ services:
       - db
       - rabbitmq
       - redis
-    stop_signal: SIGTERM
+    stop_signal: SIGKILL
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+  acme_all_pax_tw:
+    image: neilpang/acme.sh
+    environment:
+      # From: https://github.com/acmesh-official/acme.sh/wiki/dnsapi
+      # - CF_Token=7c9a3163fce1572f792824b17be16b23
+      # - CF_Account_ID=574635f5560750be90e7af2330609a6e
+      CF_Email: paxton900222@gmail.com
+      CF_Key: fd1c794b9a673a61952d1f7adfc232739f796
+      DNS_API: "dns_cf"
+      DOMAIN_NAME: "pax.tw"
+      ACME_SH_EMAIL: "paxton900222@gmail.com"
+    command: sh ./acme.sh-docker.sh
+    restart: always
+    volumes:
+      - ./99-autoreload.sh:/docker-entrypoint.d/99-autoreload.sh
+      - ./acme.sh-docker.sh:/acme.sh-docker.sh:ro
+      - ./ssl/acme_pax_tw:/acme.sh
+    logging:
+      options:
+        max-size: 50m
 
 networks:
   music_broadcast:
 
 volumes:
   redis_data:
+  rabbitmq_data:
   mysql_data:

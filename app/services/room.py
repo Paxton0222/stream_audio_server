@@ -24,13 +24,13 @@ class RoomService:
 
     def add(self, url: str) -> None:
         youtube = Youtube()
-        info = youtube.audio_info(url)
+        info = youtube.info(url)
         if info != None:
-            if info["length"] > 3600 * 6:
-                return {
-                    "status": False,
-                    "message": "影片超過6小時上限"
-                }
+            #     if info["length"] > 3600 * 6:
+            #         return {
+            #             "status": False,
+            #             "message": "影片超過6小時上限"
+            #         }
             self.queue.add(self.room_name, info)
             return {
                 "status": True
@@ -60,7 +60,7 @@ class RoomService:
         self.clear_offline_worker_task()
         task_id = self.get_playing_task_id()
         if task_id != None:
-            task = celery.AsyncResult(task_id)
+            task = celery.AsyncResult(task_id.decode("utf-8"))
             if task != None:
                 return task
         return None
@@ -70,32 +70,41 @@ class RoomService:
         active_workers = control.inspect().active()
         task_id = self.get_playing_task_id()
         if task_id != None:
-            task = celery.AsyncResult(task_id)
-            if task.state == "STARTED":
-                worker_name = task.info.get("hostname")
+            task = celery.AsyncResult(task_id.decode("utf-8"))
+            state = set()
+            state.add("STARTED")
+            state.add("PENDING")
 
-                def cancel():
-                    logging.info("clear zombie task")
-                    celery.control.revoke(
-                        task_id.decode('utf-8'), terminate=True)
-                    self.cancel_zombie_task_lock()
+            def cancel():
+                logging.info("clear zombie task")
+                celery.control.revoke(
+                    task_id.decode('utf-8'), terminate=True)
+                self.cancel_zombie_task_lock()
+                self.play()
+            if task.state == "PENDING":
+                logging.info("task cancel 0")
+                cancel()
+                return
+            elif task.state == "STARTED":
+                worker_name = task.info.get("hostname")
                 if active_workers == None:
+                    logging.error("task cancel 1")
                     cancel()
                     return
                 if worker_name not in active_workers:
+                    logging.error("task cancel 2")
                     cancel()
                 else:
-                    pass
-                    # tasks = active_workers[worker_name]
-                    # for t in tasks:
-                    #     # 暫時先這樣 O(n)
-                    #     logging.info(t['id'], task_id.decode('utf-8'))
-                    #     logging.info(t['id'] == task_id.decode('utf-8'))
-                    #     if t['id'] == task_id.decode('utf-8'):
-                    #         break
-                    # else:
-                    #     logging.error("task cancel")
-                    #     cancel()
+                    tasks = active_workers[worker_name]
+                    for t in tasks:
+                        # 暫時先這樣 O(n)
+                        logging.info(t['id'], task_id.decode('utf-8'))
+                        logging.info(t['id'] == task_id.decode('utf-8'))
+                        if t['id'] == task_id.decode('utf-8'):
+                            break
+                    else:
+                        logging.error("task cancel 3")
+                        cancel()
 
     def cancel_zombie_task_lock(self):
         """因為 docker 刪除容器時無法自動解除鎖定狀態，故在操作前檢查"""
@@ -123,10 +132,10 @@ class RoomService:
                 }
             info = json.loads(self.queue.first(self.room_name))
             # 取得被鎖上但是沒有在播放的鎖
-            while not self.lock.acquire(self.lock_name, info["length"] + 10):
+            while not self.lock.acquire(self.lock_name, info["length"]):
                 self.lock.release(self.lock_name)
             task = live_stream_youtube_audio.apply_async(
-                (info, self.room, self.channel), retry=False, expire=info["length"] + 10)
+                (info, self.room, self.channel), retry=False, expire=info["length"])
             logging.info(task.id)
             self.set_playing_task_id(str(task.id))
             return {

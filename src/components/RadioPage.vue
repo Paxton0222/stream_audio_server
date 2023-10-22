@@ -25,7 +25,7 @@
                 <vue-feather type="send"></vue-feather>
             </button>
         </div>
-        <HlsAudio class="mt-4" :src="hlsSrc" />
+        <HlsAudio class="mt-4" :src="hlsSrc" :muted="muted" @play="audio_play" @pause="audio_pause" @mute-state="audio_muted"/>
         <div class="flex justify-center mt-4">
             <div class="btn-group btn-group-vertical lg:btn-group-horizontal">
                 <button class="btn" @click="play_music" v-if="!playing">
@@ -37,9 +37,9 @@
                 <button class="btn" @click="next_music">
                     <vue-feather type="skip-forward"></vue-feather>
                 </button>
-                <!-- <button class="btn">
-                    <vue-feather type="volume-x"></vue-feather>
-                </button> -->
+                <button class="btn" @click="change_mute_state">
+                    <vue-feather :type="mute_icon"></vue-feather>
+                </button>
             </div>
         </div>
         <div class="overflow-x-auto overflow-y-scroll scrollbar-none">
@@ -92,6 +92,7 @@ const channel = ref(route.params.channel)
 const page = ref(1)
 const limit = ref(10)
 const url_input = ref('')
+const muted = ref(true)
 const toast_notifications = ref([])
 const data = reactive({
     state: {
@@ -113,6 +114,12 @@ const data = reactive({
         length: 0
     }
 })
+
+const mute_icon = computed(() => {
+    return muted.value ? "volume-x" : "volume-2" 
+})
+
+const websocket_url = computed(() => `${import.meta.env.VITE_WEBSOCKET_URL}/api/radio/${room.value}/${channel.value}`)
 
 const playing = computed(() => {
     return (
@@ -142,11 +149,9 @@ const add_music = async () => {
         let res = await api.stream.add(room.value, channel.value,temp)
         if (res.status === 200 && res.data.status) {
             toast_notifications.value.push('加入音樂成功')
-            await load_list()
+            await update()
         } else {
-            toast_notifications.value.push(
-                '請輸入正確的 Youtube URL (如果確認為 Youtube URL 則有可能為影片有成人限制)'
-            )
+            toast_notifications.value.push(res.data.message)
         }
         return
     } else {
@@ -160,11 +165,10 @@ const play_music = async () => {
         res.status === 200
             ? res.data.status
                 ? '已開始播放音樂'
-                : '播放音樂失敗'
+                : res.data.message 
             : `播放音樂失敗 (${res.status})`
     )
-    await load_list()
-    await load_state()
+    await update()
     return res.status == 200 ? res.data : null
 }
 const pause_music = async () => {
@@ -174,11 +178,10 @@ const pause_music = async () => {
         res.status === 200
             ? res.data.status
                 ? '已暫停播放音樂'
-                : '暫停音樂失敗'
+                : res.data.message
             : `暫停音樂失敗 (${res.status})`
     )
-    await load_list()
-    await load_state()
+    await update()
     return res.status == 200 ? res.data : null
 }
 const next_music = async () => {
@@ -188,28 +191,77 @@ const next_music = async () => {
         res.status === 200
             ? res.data.status
                 ? '已切換下一首播放音樂'
-                : '沒有下一首音樂了'
+                : res.data.message 
             : `切換音樂失敗 (${res.status})`
     )
-    await load_list()
-    await load_state()
+    await update()
     return res.status == 200 ? res.data : null
 }
 // eslint-disable-next-line no-unused-vars
 const next_page = async () => {
     page.value < data.list.total ? (page.value += limit.value) : null
 }
+const update = async () => {
+    data.list = await load_list()
+    data.state = await load_state()
+}
+
+const audio_play = async () => {
+    await update()
+}
+const audio_pause = async () => {
+    await update()
+}
+const audio_muted = async (value) => {
+    muted.value = value
+}
+const change_mute_state = () => {
+    muted.value = !muted.value
+}
+
+let websocket_retry_interval = null
+
+const create_websocket = () => {
+    let websocket = new WebSocket(websocket_url.value)
+
+    websocket.addEventListener('message', (event) => {
+        let data = JSON.parse(event.data)
+        console.log(data)
+        if (data.type === "worker") {
+            switch (data.message){
+                case "play":
+                    audio_play()
+                    break
+                case "pause":
+                    audio_pause()
+                    break
+            }
+        } 
+    });
+
+    websocket.addEventListener('open', () => {
+        if (websocket_retry_interval !== null) {
+            clearInterval(websocket_retry_interval)
+        }
+    });
+
+    websocket.addEventListener('error', (event) => {
+        if (websocket_retry_interval === null) {
+            websocket_retry_interval = setInterval(() => {
+                console.error("websocket retrying...")
+                create_websocket()
+            },2000)
+        } 
+    });
+}
+
+create_websocket()
 
 watch(toast_notifications.value, () => {
     setTimeout(() => toast_notifications.value.shift(), 3000)
 })
 
 onMounted(async () => {
-    data.list = await load_list()
-    data.state = await load_state()
-    setInterval(async () => {
-        data.list = await load_list()
-        data.state = await load_state()
-    }, 5000)
+    await update()
 })
 </script>
