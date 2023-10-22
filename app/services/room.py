@@ -3,11 +3,9 @@ from app.celery import celery
 from app.redis import RedisLock, RedisQueue, RedisMap
 from app.task import live_stream_youtube_audio
 from app.tube import Youtube
-import logging
 import signal
 import json
 import math
-import time
 
 
 class RoomService:
@@ -42,72 +40,10 @@ class RoomService:
             }
 
     def is_playing(self) -> bool:
-        task = self.current_task()
-        if task != None:
-            if task.state == "PENDING":
-                return True
-            elif task.state == "SUCCESS":
-                return True
-            elif task.state == "FAILURE":
-                return True
-            elif task.state == "REVOKED":
-                return False
-            elif task.state == "STARTED":
-                return True
-        return False
-
-    def current_task(self) -> str | None:
-        self.clear_offline_worker_task()
         task_id = self.get_playing_task_id()
-        if task_id != None:
-            task = celery.AsyncResult(task_id.decode("utf-8"))
-            if task != None:
-                return task
-        return None
+        return True if task_id != None else False
 
-    def clear_offline_worker_task(self):
-        control = celery.control
-        active_workers = control.inspect().active()
-        task_id = self.get_playing_task_id()
-        if task_id != None:
-            task = celery.AsyncResult(task_id.decode("utf-8"))
-            state = set()
-            state.add("STARTED")
-            state.add("PENDING")
-
-            def cancel():
-                logging.info("clear zombie task")
-                celery.control.revoke(
-                    task_id.decode('utf-8'), terminate=True)
-                self.cancel_zombie_task_lock()
-                self.play()
-            if task.state == "PENDING":
-                logging.info("task cancel 0")
-                cancel()
-                return
-            elif task.state == "STARTED":
-                worker_name = task.info.get("hostname")
-                if active_workers == None:
-                    logging.error("task cancel 1")
-                    cancel()
-                    return
-                if worker_name not in active_workers:
-                    logging.error("task cancel 2")
-                    cancel()
-                else:
-                    tasks = active_workers[worker_name]
-                    for t in tasks:
-                        # 暫時先這樣 O(n)
-                        logging.info(t['id'], task_id.decode('utf-8'))
-                        logging.info(t['id'] == task_id.decode('utf-8'))
-                        if t['id'] == task_id.decode('utf-8'):
-                            break
-                    else:
-                        logging.error("task cancel 3")
-                        cancel()
-
-    def cancel_zombie_task_lock(self):
-        """因為 docker 刪除容器時無法自動解除鎖定狀態，故在操作前檢查"""
+    def release_lock(self):
         self.map.delete(self.map_name, "playing")
         self.lock.release(self.lock_name)
 
@@ -136,7 +72,6 @@ class RoomService:
                 self.lock.release(self.lock_name)
             task = live_stream_youtube_audio.apply_async(
                 (info, self.room, self.channel), retry=False, expire=info["length"] + 5)
-            logging.info(task.id)
             self.set_playing_task_id(str(task.id))
             return {
                 "status": True
@@ -155,7 +90,7 @@ class RoomService:
             else:
                 celery.control.revoke(task_id.decode(
                     'utf-8'), terminate=True, signal=signal.SIGTERM)
-            self.cancel_zombie_task_lock()
+            self.release_lock()
             return {
                 "status": True,
                 "state": task.state,
@@ -167,22 +102,16 @@ class RoomService:
         }
 
     def next(self):
-        last_time = self.map.get(self.next_name, "last_time")
-        if self.is_playing() and (last_time is None or int(time.time()) - int(last_time.decode("utf-8")) > 5):
-            pause_res = self.pause()
-            if pause_res["status"]:
-                self.map.set(self.next_name, "last_time", int(time.time()))
-                self.queue.pop(self.room_name)
-                return self.play()
-            else:
-                return {
-                    "status": False,
-                    "message": "暫停音樂失敗"
-                }
-        return {
-            "status": False,
-            "message": "沒有下一首音樂了"
-        }
+        if self.is_playing():
+            self.pause()
+        self.queue.pop(self.room_name)
+        if self.queue.length(self.room_name) > 0:
+            return self.play()
+        else:
+            return {
+                "status": False,
+                "message": "沒有下一首音樂了"
+            }
 
     def list(self, page: int, limit: int) -> List[dict]:
         start_index = (page - 1) * limit
