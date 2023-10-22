@@ -198,7 +198,8 @@ services:
       - db
       - rabbitmq
       - redis
-    stop_signal: SIGKILL
+    stop_signal: SIGTREM
+    # stop_grace_period: 1m
     logging:
       options:
         max-size: "10m"

@@ -35,7 +35,6 @@ const loadAudioStream = () => {
     hls.on(Hls.Events.ERROR, async (event, data) => {
         if (data.type === Hls.ErrorTypes.NETWORK_ERROR && data.fatal) {
             playing.value = false
-            console.log(interval)
             if (interval === null) {
                 interval = setInterval(() => {
                     console.error("retrying...")

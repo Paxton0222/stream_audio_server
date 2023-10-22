@@ -125,8 +125,7 @@ const playing = computed(() => {
     return (
         data.state !== null &&
         data.state.status === true &&
-        data.state.task_id !== null &&
-        data.state.state === 'STARTED'
+        data.state.task_id !== null
     )
 })
 const hlsSrc = computed(() => `${import.meta.env.VITE_HLS_URL}/live/${room.value}-room-${channel.value}.m3u8`)
@@ -226,7 +225,6 @@ const create_websocket = () => {
 
     websocket.addEventListener('message', async (event) => {
         let data = JSON.parse(event.data)
-        console.log(data)
         if (data.type === "worker") {
             switch (data.message){
                 case "play":
