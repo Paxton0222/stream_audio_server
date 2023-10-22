@@ -49,22 +49,6 @@ services:
     networks:
       - music_broadcast
     restart: always
-  # ngrok:
-  #   image: ngrok/ngrok:3
-  #   networks:
-  #     - music_broadcast
-  #   restart: unless-stopped
-  #   volumes:
-  #     - ./ngrok.yml:/etc/ngrok.yml
-  #   command:
-  #         - "start"
-  #         - "--all"
-  #         - "--config"
-  #         - "/etc/ngrok.yml"
-  #   ports:
-  #     - 4040:4040
-  #   depends_on:
-  #     - nginx
   flower:
     image: mher/flower
     restart: always
@@ -87,9 +71,9 @@ services:
       context: .
       dockerfile: ./docker/fastapi.Dockerfile
       args:
-        env_mode: development
-    ports:
-      - 8000:8000
+        env_mode: dev
+    # ports:
+    #   - 8000:8000
     networks:
       - music_broadcast
     volumes:
@@ -99,12 +83,16 @@ services:
       - db
       - rabbitmq
       - redis
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
   fronted:
     build:
       context: .
       dockerfile: ./docker/fronted.Dockerfile
       args:
-        env_mode: development
+        env_mode: dev
     ports:
       - "4174:4173"
     volumes:
@@ -135,26 +123,42 @@ services:
       - music_broadcast
     depends_on:
       - db
-  celery-worker:
-    build:
-      context: .
-      dockerfile: ./docker/worker.Dockerfile
-      args:
-        env_mode: development
-    deploy:
-      replicas: 2
-      restart_policy:
-        condition: on-failure
-    networks:
-      - music_broadcast
-    depends_on:
-      - db
-      - rabbitmq
-      - redis
-    volumes:
-      - ./:/app
-    stop_signal: SIGKILL
-    # stop_grace_period: 1m
+  # celery-worker:
+  #   build:
+  #     context: .
+  #     dockerfile: ./docker/worker.Dockerfile
+  #     args:
+  #       env_mode: dev
+  #   deploy:
+  #     replicas: 2
+  #     restart_policy:
+  #       condition: on-failure
+  #   networks:
+  #     - music_broadcast
+  #   depends_on:
+  #     - db
+  #     - rabbitmq
+  #     - redis
+  #   volumes:
+  #     - ./:/app
+  #   stop_signal: SIGKILL
+  #   # stop_grace_period: 1m
+  # ngrok:
+  #   image: ngrok/ngrok:3
+  #   networks:
+  #     - music_broadcast
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./ngrok.yml:/etc/ngrok.yml
+  #   command:
+  #         - "start"
+  #         - "--all"
+  #         - "--config"
+  #         - "/etc/ngrok.yml"
+  #   ports:
+  #     - 4040:4040
+  #   depends_on:
+  #     - nginx
   acme_all_pax_tw:
     image: neilpang/acme.sh
     environment:

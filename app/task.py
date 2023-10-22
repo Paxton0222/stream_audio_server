@@ -1,12 +1,12 @@
 from app.celery import celery
-from app.exceptions import YoutubeAudioExpired
 from app.stream import Stream
 from app.redis import get_redis_lock, get_redis_queue, get_redis_map
-from app.tube import Youtube
 from app.env import env_vars
 import json
 import signal
 import logging
+import asyncio
+import websockets
 import os
 
 
@@ -21,6 +21,22 @@ def live_stream_youtube_audio(info: dict, room: str, channel: int):
     stream = Stream()
     process = None  # 初始化 process 变量
     terminate = False
+
+    async def connect_to_websocket_server(event: str):
+        # Replace with the WebSocket server URL you want to connect to
+        uri = f"""{env_vars["BACKEND_URL"]}/api/radio/{room}/{channel}"""
+
+        async with websockets.connect(uri) as websocket:
+            logging.info(uri)
+            logging.info("Connected to WebSocket server.")
+            message = {
+                "type": "worker",
+                "message": event
+            }
+            await websocket.send(json.dumps(message))
+        logging.info("message sended.")
+
+    asyncio.get_event_loop().run_until_complete(connect_to_websocket_server("play"))
 
     def release_lock(signum=None, frame=None):
         rmap.delete(map_name, "playing")
@@ -62,21 +78,13 @@ def live_stream_youtube_audio(info: dict, room: str, channel: int):
     try:
         logging.info(f"Room {room_name} playing music: {info['title']}")
         process = stream.live_stream_audio(
-            info["url"], f"""{env_vars["RTMP_TARGET"]}/{room_name}""", True)
+            info["url"], f"""{env_vars["RTMP_TARGET"]}/{room_name}""", False)
         process.wait()
         logging.info(f"Room {room_name} music ended: {info['title']}")
-    except YoutubeAudioExpired:
-        logging.info(
-            f"{room_name} {info['title']} audio url is expired restarting task...")
-        youtube = Youtube()
-        updated_info = youtube.audio_info(info["url"])
-        if updated_info:
-            lock.extend(lock_name, updated_info["length"] + 10)
-            task = live_stream_youtube_audio.apply_async(
-                (updated_info, room, channel), retry=False, expire=updated_info["length"] + 10)
-            rmap.set(map_name, "playing", str(task.id))
     except Exception as e:
         logging.error(e)
     finally:
         next_music()
+        asyncio.get_event_loop().run_until_complete(
+            connect_to_websocket_server("pause"))
         logging.info(f"{room_name} end of script")

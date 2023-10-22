@@ -1,2 +1,0 @@
-class YoutubeAudioExpired(Exception):
-    pass

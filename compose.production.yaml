@@ -46,18 +46,57 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-  redis:
-    image: redis:latest 
+  # redis:
+  #   image: redis:latest 
+  #   ports:
+  #     - "6379:6379" 
+  #   volumes:
+  #     - redis_data:/data
+  #   command: ["redis-server", "--appendonly", "yes"]
+  #   networks:
+  #     - music_broadcast
+  #   restart: always
+  fix-redis-volume-ownership: # This service is to authorise redis-master with ownership permissions
+    image: 'bitnami/redis:latest'
+    user: root
+    command: chown -R 1001:1001 /bitnami
     volumes:
-      - redis_data:/data
-    command: ["redis-server", "--appendonly", "yes"]
+      - redis_data:/bitnami
+      # - ./data/redis/conf/redis.conf:/opt/bitnami/redis/conf/redis.conf
     networks:
       - music_broadcast
     restart: always
-    logging:
-      options:
-        max-size: "10m"
-        max-file: "3"
+  redis: # Setting up master node
+    image: 'bitnami/redis:latest'
+    ports:
+      - '6379:6379' # Port 6329 will be exposed to handle connections from outside server 
+    environment:
+      - REDIS_REPLICATION_MODE=master # Assigning the node as a master
+      - ALLOW_EMPTY_PASSWORD=yes # No password authentication required/ provide password if needed
+    volumes:
+      - redis_data:/bitnami # Redis master data volume
+      # - ./data/redis/conf/redis.conf:/opt/bitnami/redis/conf/redis.conf # Redis master configuration volume
+    networks:
+      - music_broadcast
+    restart: always
+  redis-replica: # Setting up slave node
+    image: 'bitnami/redis:latest'
+    # ports:
+    #   - '6379' # No port is exposed 
+    depends_on:
+      - redis # will only start after the master has booted completely
+    environment:
+      - REDIS_REPLICATION_MODE=slave # Assigning the node as slave
+      - REDIS_MASTER_HOST=redis # Host for the slave node is the redis-master node
+      - REDIS_MASTER_PORT_NUMBER=6379 # Port number for local 
+      - ALLOW_EMPTY_PASSWORD=yes # No password required to connect to node
+    networks:
+      - music_broadcast
+    restart: always
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
   flower:
     image: mher/flower
     restart: always

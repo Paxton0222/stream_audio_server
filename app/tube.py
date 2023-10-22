@@ -1,33 +1,35 @@
 # from pytube import YouTube
 import yt_dlp as youtube_dl
 
+
 class Youtube:
-    def audio_info(self, url: str):
-        # video = YouTube(url, use_oauth=False, allow_oauth_cache=False)
+    def info(self, url: str):
         try:
-            # audio_stream = video.streams.filter(only_audio=True).first()
-            # audio_url = audio_stream.url + "&from_cache=True"
             ydl_opts = {
                 'quiet': True,
                 'extract_flat': True,
                 'force_generic_extractor': True,
                 'simulate': True,
+                'dump_single_json': True,
             }
             with youtube_dl.YoutubeDL(ydl_opts) as ydl:
                 info_dict = ydl.extract_info(url, download=False)
-            
-            title = info_dict.get('title', 'N/A')
-            author = info_dict.get('uploader', 'N/A')
-            thumbnail_url = info_dict.get('thumbnail', 'N/A')
-            video_duration = info_dict.get('duration', 0)
 
-            return {
+            # 初始化返回的字典，包含一致的键
+            result = {
                 "url": url,
-                "title": title,
-                "author": author,
-                "thumb_url": thumbnail_url,
-                "length": video_duration
+                "title": info_dict.get('title', 'N/A'),
+                "author": info_dict.get('uploader', 'N/A'),
+                "thumb_url": info_dict.get('thumbnail', 'N/A'),
+                "length": info_dict.get("duration", None),
+                # is_live 是否直播
+                # playlist null 代表不是 playlist
             }
+
+            # 更新字典以包含 `yt-dlp` 提供的信息
+            result.update(info_dict)
+
+            return result
         except Exception as e:
             print(e)
         return None

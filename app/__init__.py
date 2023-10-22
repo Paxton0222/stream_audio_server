@@ -1,5 +1,9 @@
 from app.models import Users
+from app.services.socket import WebSocketManager
+
+socket_manager = WebSocketManager()
 
 __all__ = (
-    Users
+    Users,
+    socket_manager
 )

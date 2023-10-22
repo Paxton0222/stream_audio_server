@@ -119,6 +119,8 @@ const mute_icon = computed(() => {
     return muted.value ? "volume-x" : "volume-2" 
 })
 
+const websocket_url = computed(() => `${import.meta.env.VITE_WEBSOCKET_URL}/api/radio/${room.value}/${channel.value}`)
+
 const playing = computed(() => {
     return (
         data.state !== null &&
@@ -216,6 +218,44 @@ const audio_muted = async (value) => {
 const change_mute_state = () => {
     muted.value = !muted.value
 }
+
+let websocket_retry_interval = null
+
+const create_websocket = () => {
+    let websocket = new WebSocket(websocket_url.value)
+
+    websocket.addEventListener('message', (event) => {
+        let data = JSON.parse(event.data)
+        console.log(data)
+        if (data.type === "worker") {
+            switch (data.message){
+                case "play":
+                    audio_play()
+                    break
+                case "pause":
+                    audio_pause()
+                    break
+            }
+        } 
+    });
+
+    websocket.addEventListener('open', () => {
+        if (websocket_retry_interval !== null) {
+            clearInterval(websocket_retry_interval)
+        }
+    });
+
+    websocket.addEventListener('error', (event) => {
+        if (websocket_retry_interval === null) {
+            websocket_retry_interval = setInterval(() => {
+                console.error("websocket retrying...")
+                create_websocket()
+            },2000)
+        } 
+    });
+}
+
+create_websocket()
 
 watch(toast_notifications.value, () => {
     setTimeout(() => toast_notifications.value.shift(), 3000)

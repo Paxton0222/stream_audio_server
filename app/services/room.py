@@ -24,13 +24,13 @@ class RoomService:
 
     def add(self, url: str) -> None:
         youtube = Youtube()
-        info = youtube.audio_info(url)
+        info = youtube.info(url)
         if info != None:
-        #     if info["length"] > 3600 * 6:
-        #         return {
-        #             "status": False,
-        #             "message": "影片超過6小時上限"
-        #         }
+            #     if info["length"] > 3600 * 6:
+            #         return {
+            #             "status": False,
+            #             "message": "影片超過6小時上限"
+            #         }
             self.queue.add(self.room_name, info)
             return {
                 "status": True
@@ -132,10 +132,10 @@ class RoomService:
                 }
             info = json.loads(self.queue.first(self.room_name))
             # 取得被鎖上但是沒有在播放的鎖
-            while not self.lock.acquire(self.lock_name, info["length"] + 10):
+            while not self.lock.acquire(self.lock_name, info["length"]):
                 self.lock.release(self.lock_name)
             task = live_stream_youtube_audio.apply_async(
-                (info, self.room, self.channel), retry=False, expire=info["length"] + 10)
+                (info, self.room, self.channel), retry=False, expire=info["length"])
             logging.info(task.id)
             self.set_playing_task_id(str(task.id))
             return {
