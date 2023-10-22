@@ -105,15 +105,6 @@ def live_stream_next_youtube_audio(room: str, channel: int):
     res = requests.post(
         f"""{env_vars["BACKEND_URL"]}/api/stream/next/{room}/{channel}""", timeout=5)
     data = res.json()
-    room_name = f"{room}-room-{channel}"
-    active_radios = json.loads(redis_conn.hget(
-        active_radios_key, room_name) or '{}')
-    active_radios[room_name] = {
-        "room": room,
-        "channel": channel
-    }
-    redis_conn.hset(active_radios_key, room_name,
-                    json.dumps(active_radios))
     return data
 
 
