@@ -224,16 +224,16 @@ let websocket_retry_interval = null
 const create_websocket = () => {
     let websocket = new WebSocket(websocket_url.value)
 
-    websocket.addEventListener('message', (event) => {
+    websocket.addEventListener('message', async (event) => {
         let data = JSON.parse(event.data)
         console.log(data)
         if (data.type === "worker") {
             switch (data.message){
                 case "play":
-                    audio_play()
+                    await audio_play()
                     break
                 case "pause":
-                    audio_pause()
+                    await audio_pause()
                     break
             }
         } 
