@@ -119,7 +119,7 @@ const mute_icon = computed(() => {
     return muted.value ? "volume-x" : "volume-2" 
 })
 
-const websocket_url = computed(() => `${import.meta.env.VITE_WEBSOCKET_URL}/api/radio/${room.value}/${channel.value}`)
+const websocket_url = computed(() => `${import.meta.env.VITE_WEBSOCKET_URL}/api/stream/${room.value}/${channel.value}`)
 
 const playing = computed(() => {
     return (

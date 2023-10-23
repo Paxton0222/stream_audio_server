@@ -1,9 +1,15 @@
 from app.models import Users
-from app.services.socket import WebSocketManager
+from app.services.socket import WebSocketService
+from app.sql import Base
+from app.env import env_vars
+from app.celery import celery
 
-socket_manager = WebSocketManager()
+socket_service = WebSocketService()
 
 __all__ = (
     Users,
-    socket_manager
+    "socket_service",
+    "Base",
+    "env_vars",
+    "celery"
 )

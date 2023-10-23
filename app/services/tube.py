@@ -1,8 +1,7 @@
-# from pytube import YouTube
 import yt_dlp as youtube_dl
 
 
-class Youtube:
+class YoutubeService:
     def info(self, url: str):
         try:
             ydl_opts = {

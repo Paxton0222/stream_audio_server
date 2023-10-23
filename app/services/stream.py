@@ -1,12 +1,8 @@
 import subprocess
-import requests
-import tempfile
-import time
-import signal
 import os
 
 
-class Stream:
+class StreamService:
     def __init__(self):
         self.subprocesses = []
 
