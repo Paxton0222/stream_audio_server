@@ -69,11 +69,10 @@ services:
     restart: always
     build:
       context: .
-      dockerfile: ./docker/fastapi.Dockerfile
+      dockerfile: ./docker/python.Dockerfile
       args:
         env_mode: dev
-    # ports:
-    #   - 8000:8000
+    entrypoint: /server.dev.sh
     networks:
       - music_broadcast
     volumes:
@@ -126,9 +125,10 @@ services:
   celery-worker:
     build:
       context: .
-      dockerfile: ./docker/worker.Dockerfile
+      dockerfile: ./docker/python.Dockerfile
       args:
         env_mode: dev
+    entrypoint: /celery.dev.sh
     deploy:
       replicas: 2
       restart_policy:
@@ -140,6 +140,8 @@ services:
       - rabbitmq
       - redis
     stop_signal: SIGTERM
+    volumes:
+      - ./app:/app/app
     # stop_grace_period: 1m
   # ngrok:
   #   image: ngrok/ngrok:3
