@@ -1,9 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.exc import OperationalError
 from app.env import env_vars
-import logging
 
 # 创建数据库引擎
 db_url = f"{env_vars['DATABASE_TYPE']}://{env_vars['DATABASE_USER']}:{env_vars['DATABASE_PASS']}@{env_vars['DATABASE_HOST']}:{env_vars['DATABASE_PORT']}/{env_vars['DATABASE_NAME']}"

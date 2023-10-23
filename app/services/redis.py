@@ -7,7 +7,7 @@ redis_conn: redis.StrictRedis = redis.StrictRedis(
     host=env_vars["REDIS_HOST"], port=env_vars["REDIS_PORT"], db=0)
 
 
-class RedisQueue:
+class RedisQueueService:
     def add(self, room: str, data: dict):
         redis_conn.rpush(room, json.dumps(data))
 
@@ -28,11 +28,7 @@ class RedisQueue:
         redis_conn.delete(room)
 
 
-class LockNotAcquiredError(Exception):
-    pass
-
-
-class RedisLock:
+class RedisLockService:
     def __init__(self, acquire_timeout=1):
         self.redis_conn: redis.StrictRedis = redis_conn
         self.acquire_timeout = acquire_timeout
@@ -53,7 +49,7 @@ class RedisLock:
         self.redis_conn.pexpire(lock_name, additional_time)
 
 
-class RedisMap:
+class RedisMapService:
     def __init__(self):
         self.redis_client: redis.StrictRedis = redis_conn
 
@@ -83,12 +79,12 @@ class RedisMap:
 
 
 def get_redis_queue():
-    return RedisQueue()
+    return RedisQueueService()
 
 
 def get_redis_lock():
-    return RedisLock()
+    return RedisLockService()
 
 
 def get_redis_map():
-    return RedisMap()
+    return RedisMapService()

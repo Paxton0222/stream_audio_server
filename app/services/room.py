@@ -1,9 +1,8 @@
+from app.services.redis import RedisLockService, RedisQueueService, RedisMapService
+from app.services.tube import YoutubeService
+from app.tasks.stream import live_stream_youtube_audio
 from typing import List
 from app.celery import celery
-from app.redis import RedisLock, RedisQueue, RedisMap
-from app.task import live_stream_youtube_audio
-from app.tube import Youtube
-import logging
 import signal
 import json
 import math
@@ -11,19 +10,20 @@ import time
 
 
 class RoomService:
-    def __init__(self, room: str, channel: int, lock: RedisLock, queue: RedisQueue, map: RedisMap):
+    def __init__(self, room: str, channel: int, lock: RedisLockService, queue: RedisQueueService, map: RedisMapService):
         self.room = room
         self.channel = channel
         self.lock = lock
         self.queue = queue
         self.map = map
-        self.room_name = f"{room}-room-{channel}"
-        self.lock_name = f"{room}-lock-{channel}"
-        self.map_name = f"{room}-map-{channel}"
-        self.next_name = f"{room}-next-{channel}"
+        self.room_name = f"{room}-room-{channel}"  # 房間名稱
+        self.lock_name = f"{room}-lock-{channel}"  # 房間全局鎖名稱
+        self.map_name = f"{room}-map-{channel}"  # 房間全局哈希表名稱
+        self.next_name = f"{room}-next-{channel}"  # 房間切換下一首全局鎖名稱
 
     def add(self, url: str) -> None:
-        youtube = Youtube()
+        """加入歌曲到隊列中"""
+        youtube = YoutubeService()
         info = youtube.info(url)
         if info != None:
             #     if info["length"] > 3600 * 6:
@@ -42,26 +42,32 @@ class RoomService:
             }
 
     def is_playing(self) -> bool:
+        """是否在播放中"""
         task_id = self.get_playing_task_id()
         return True if task_id != None else False
 
     def release_lock(self):
+        """解除線程鎖"""
         self.map.delete(self.map_name, "playing")
         self.lock.release(self.lock_name)
 
     def playing_data(self) -> dict:
+        """播放中的影片資料"""
         data = self.queue.first(self.room_name)
         if data:
             return json.loads(data)
         return {}
 
     def set_playing_task_id(self, task_id: str) -> None:
+        """設置正在播放的 task_id"""
         self.map.set(self.map_name, "playing", task_id)
 
     def get_playing_task_id(self):
+        """取得正在播放的 task_id"""
         return self.map.get(self.map_name, "playing")
 
     def play(self) -> None:
+        """播放隊列歌曲"""
         if self.queue.length(self.room_name) > 0:
             if self.is_playing():
                 return {
@@ -84,6 +90,7 @@ class RoomService:
         }
 
     def pause(self) -> None:
+        """暫停播放歌曲"""
         if self.is_playing():
             task_id = self.get_playing_task_id()
             task = celery.AsyncResult(task_id.decode('utf-8'))
@@ -104,6 +111,7 @@ class RoomService:
         }
 
     def next(self):
+        """切換下一首歌"""
         last_time = self.map.get(self.next_name, "last_time")
         if (last_time is None or int(time.time()) - int(last_time.decode("utf-8")) > 5):
             self.map.set(self.next_name, "last_time", int(time.time()))
@@ -128,6 +136,7 @@ class RoomService:
             }
 
     def list(self, page: int, limit: int) -> List[dict]:
+        """取得隊列列表"""
         start_index = (page - 1) * limit
         end_index = start_index + limit - 1
         data = self.queue.range(self.room_name, start_index, end_index)
@@ -140,7 +149,9 @@ class RoomService:
         }
 
     def length(self) -> int:
+        """取得隊列長度"""
         return self.queue.length(self.room_name)
 
     def clean(self) -> None:
+        """清除隊列"""
         self.queue.clean(self.room_name)

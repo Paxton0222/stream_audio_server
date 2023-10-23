@@ -1,13 +1,13 @@
-import asyncio
-import redis.asyncio as aioredis
-from app.env import env_vars
-from fastapi import WebSocket
 from websockets.exceptions import ConnectionClosedOK
+from fastapi import WebSocket
+from app.env import env_vars
+import redis.asyncio as aioredis
+import asyncio
 
 
-class RedisPubSubManager:
+class RedisPubSubService:
     """
-        Initializes the RedisPubSubManager.
+        Initializes the RedisPubSubService.
 
     Args:
         host (str): Redis server host.
@@ -70,18 +70,18 @@ class RedisPubSubManager:
         await self.pubsub.unsubscribe(room_id)
 
 
-class WebSocketManager:
+class WebSocketService:
 
     def __init__(self):
         """
-        Initializes the WebSocketManager.
+        Initializes the WebSocketService.
 
         Attributes:
             rooms (dict): A dictionary to store WebSocket connections in different rooms.
-            pubsub_client (RedisPubSubManager): An instance of the RedisPubSubManager class for pub-sub functionality.
+            pubsub_client (RedisPubSubService): An instance of the RedisPubSubService class for pub-sub functionality.
         """
         self.rooms: dict = {}
-        self.pubsub_client = RedisPubSubManager(
+        self.pubsub_client = RedisPubSubService(
             host=env_vars["REDIS_HOST"], port=env_vars["REDIS_PORT"])
 
     async def add_user_to_room(self, room_id: str, websocket: WebSocket) -> None:

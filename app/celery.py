@@ -5,7 +5,7 @@ celery = Celery(
     'music_broadcast',
     broker=f"""pyamqp://{env_vars["RABBITMQ_USER"]}:{env_vars["RABBITMQ_PASS"]}@{env_vars["RABBITMQ_HOST"]}:{env_vars["RABBITMQ_PORT"]}//""",
     backend=f"""redis://{env_vars["REDIS_HOST"]}:{env_vars["REDIS_PORT"]}/0""",
-    include=["app.task"]
+    include=["app.tasks"]
 )
 
 celery.conf.update(
