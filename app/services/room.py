@@ -1,4 +1,4 @@
-from app.services.redis import RedisLockService, RedisQueueService, RedisMapService
+from app.redis import RedisLock, RedisQueue, RedisMap
 from app.services.tube import YoutubeService
 from app.tasks.stream import live_stream_youtube_audio
 from typing import List
@@ -10,7 +10,7 @@ import time
 
 
 class RoomService:
-    def __init__(self, room: str, channel: int, lock: RedisLockService, queue: RedisQueueService, map: RedisMapService):
+    def __init__(self, room: str, channel: int, lock: RedisLock, queue: RedisQueue, map: RedisMap):
         self.room = room
         self.channel = channel
         self.lock = lock

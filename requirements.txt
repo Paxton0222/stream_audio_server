@@ -25,6 +25,7 @@ flower==2.0.1
 frozenlist==1.4.0
 future==0.18.3
 greenlet==3.0.0
+gunicorn==21.2.0
 h11==0.14.0
 httptools==0.6.0
 humanize==4.8.0
@@ -36,8 +37,10 @@ msgpack==1.0.5
 multidict==6.0.4
 mutagen==1.47.0
 mysqlclient==2.2.0
+packaging==23.2
 prometheus-client==0.17.1
 prompt-toolkit==3.0.39
+psutil==5.9.6
 pycparser==2.21
 pycryptodomex==3.19.0
 pydantic==2.4.2
@@ -61,8 +64,9 @@ urllib3==2.0.7
 uvicorn==0.23.2
 uvloop==0.17.0
 vine==5.0.0
+watchdog==3.0.0
 watchfiles==0.20.0
 wcwidth==0.2.8
 websockets==11.0.3
 yarl==1.9.2
-yt-dlp @ https://github.com/yt-dlp/yt-dlp/archive/master.tar.gz
+yt-dlp==2023.10.13
