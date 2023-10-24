@@ -1,4 +1,4 @@
-from celery.signals import worker_shutting_down, task_success
+from celery.signals import worker_shutting_down, task_success, worker_shutdown
 from app.services.stream import StreamService
 from app.services.redis import get_redis_lock, get_redis_map, redis_conn
 from app.env import env_vars
@@ -9,11 +9,42 @@ import websockets
 import requests
 import socket
 import signal
+import psutil
 import json
 import os
 
 worker_hostname = socket.gethostname()
 active_radios_key = f'active_radios'
+
+# Global flag to indicate a graceful shutdown
+graceful_shutdown = False
+
+# Handler for the SIGTERM signal
+
+
+def sigterm_handler(signum, frame):
+    global graceful_shutdown
+    graceful_shutdown = True
+
+
+# Register the signal handler for SIGTERM
+signal.signal(signal.SIGTERM, sigterm_handler)
+
+# Handler for Celery worker shutdown
+
+
+@worker_shutdown.connect
+def worker_shutdown_handler(**kwargs):
+    global graceful_shutdown
+
+    # Set the graceful shutdown flag
+    graceful_shutdown = True
+
+    # Terminate the subprocesses running Celery tasks
+    current_process = psutil.Process(os.getpid())
+    for child in current_process.children(recursive=True):
+        if 'celery' in child.name():
+            child.terminate()
 
 
 @celery.task
@@ -52,7 +83,7 @@ def live_stream_youtube_audio(info: dict, room: str, channel: int):
         lock.release(lock_name)
         logging.info(f"{room_name} released lock successfully.")
 
-    def terminate_process(signum, frame):
+    def terminate_process(signum=None, frame=None):
         """接收到 celery revoke 訊號時關閉 Youtube subprocess"""
         nonlocal process
         if process:
@@ -89,7 +120,7 @@ def live_stream_youtube_audio(info: dict, room: str, channel: int):
     try:
         # 開始 yt 推流 subprocess
         process = stream.live_stream_audio(
-            info["url"], f"""{env_vars["RTMP_TARGET"]}/{room_name}""", True)
+            info["url"], f"""{env_vars["RTMP_TARGET"]}/{room_name}""", False)
         process.wait()
         logging.info(f"Room {room_name} music ended: {info['title']}")
     except Exception as e:

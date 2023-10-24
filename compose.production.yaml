@@ -118,9 +118,10 @@ services:
     restart: always
     build:
       context: .
-      dockerfile: ./docker/fastapi.Dockerfile
+      dockerfile: ./docker/python.Dockerfile
       args:
         env_mode: production
+    entrypoint: /server.production.sh
     networks:
       - music_broadcast
     depends_on:
@@ -185,9 +186,10 @@ services:
     image: registry.paxton0222.com/music_server/worker
     build:
       context: .
-      dockerfile: ./docker/worker.Dockerfile
+      dockerfile: ./docker/python.Dockerfile
       args:
         env_mode: production
+    entrypoint: /celery.production.sh
     deploy:
       replicas: 5
       restart_policy:

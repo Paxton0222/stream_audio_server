@@ -1,12 +1,13 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from app import socket_service, room_service
+from app import socket_service, room_service, tube_service
 
 router = APIRouter(prefix="/stream", tags=["stream"])
 
 @router.post("/add/{room}/{channel}")
 async def stream_add(room: str, channel: int, url: str):
     """加入直播歌曲"""
-    return room_service.add(url,room,channel)
+    info = tube_service.info(url)
+    return room_service.add(info,room,channel)
 
 @router.post("/play/{room}/{channel}")
 async def stream_play(room: str, channel: int):  # 如果當前線程沒有在播放

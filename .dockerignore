@@ -9,8 +9,6 @@
 **/.venv
 **/.classpath
 **/.dockerignore
-**/.env
-**/.env.example
 **/.git
 **/.gitignore
 **/.project
@@ -38,3 +36,5 @@ README.md
 **/test-server
 **/hls
 **/docker
+.env.example
+.env

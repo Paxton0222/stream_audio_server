@@ -1,6 +1,12 @@
 from pydantic import BaseModel
 
-class BaseUser(BaseModel,UserInfo):
+class UserInfo(BaseModel):
+    """基本用戶資料"""
+    name: str
+    email: str
+    password: str
+
+class BaseUser(UserInfo):
     """用戶資料表欄位類型"""
     id: int
     last_login: str # 最後登入日期
@@ -10,17 +16,10 @@ class BaseUser(BaseModel,UserInfo):
     deleted_at: str
 
     class Config:
-        orm_mode = True
-
-class UserInfo(BaseModel):
-    """基本用戶資料"""
-    name: str
-    email: str
-    password: str
+        from_attributes = True
 
 class CreateUserInfo(UserInfo):
     """創建用戶需要的資料"""
-    pass
 
 class UpdateUserInfo(BaseModel):
     """更新用戶資料所需要的輸入"""

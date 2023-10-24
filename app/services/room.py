@@ -2,12 +2,10 @@ from app.services.redis import RedisLockService, RedisQueueService, RedisMapServ
 from app.tasks.stream import live_stream_youtube_audio
 from typing import List
 from app.celery import celery
-from app import tube_service
 import signal
 import json
 import math
 import time
-
 
 class RoomService:
     def __init__(self, lock: RedisLockService, queue: RedisQueueService, map: RedisMapService):
@@ -31,9 +29,8 @@ class RoomService:
         """房間切換下一首全局鎖名稱"""
         return f"{room}-map-{channel}"
 
-    def add(self, url: str, room: str, channel: int) -> None:
+    def add(self, info: dict, room: str, channel: int) -> None:
         """加入歌曲到隊列中"""
-        info = tube_service.info(url)
         if info != None:
             self.queue.add(self.room_name(room,channel), info)
             return {

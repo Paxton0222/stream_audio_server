@@ -141,7 +141,4 @@ class WebSocketService:
                 all_sockets = self.rooms[room_id]
                 for socket in all_sockets:
                     data = message['data'].decode('utf-8')
-                    try:
-                        await socket.send_text(data)
-                    except ConnectionClosedOK:
-                        pass
+                    await socket.send_text(data)
