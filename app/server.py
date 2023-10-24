@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import OperationalError
 from http import HTTPStatus
 from app.api import api_router
+from app import db
 
 app = FastAPI()
 
@@ -19,4 +20,5 @@ app.include_router(api_router)
 
 @app.exception_handler(OperationalError)
 async def global_exception_handler(request, exc):
+    db.rollback()
     return JSONResponse(content={"error": "Database not connected."}, status_code=HTTPStatus.SERVICE_UNAVAILABLE)

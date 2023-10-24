@@ -1,4 +1,3 @@
-from websockets.exceptions import ConnectionClosedOK
 from fastapi import WebSocket
 from app.env import env_vars
 import redis.asyncio as aioredis
